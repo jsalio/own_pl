@@ -101,6 +101,12 @@ public class InterpreterTests
     }
 
     [Test]
+    public void DivisionByZeroThrowsMathError()
+    {
+        Assert.That(() => Eval("1 / 0"), Throws.TypeOf<MathError>());
+    }
+
+    [Test]
     public void UndefinedVariableThrows()
     {
         Assert.That(() => Eval("noExiste"), Throws.Exception);

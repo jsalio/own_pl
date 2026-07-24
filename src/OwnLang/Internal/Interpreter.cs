@@ -1,5 +1,3 @@
-using own_pl.internas.Error;
-
 namespace Own_Lang.Internal.Contracts;
 
 /// <summary>
@@ -111,7 +109,7 @@ internal sealed class Interpreter : IInterpreter
         {
             if (b is int divisor && divisor == 0)
             {
-                throw new MathError("Divission by zero detected");
+                throw new MathError("Division by zero detected");
             }
             return (int)a! / (int)b!;
         }

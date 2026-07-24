@@ -34,12 +34,40 @@ resultado:
 
 ## Running it
 
+The repository is a solution (`OwnLang.sln`) with the interpreter under
+`src/OwnLang`. From the repo root:
+
 ```bash
-dotnet run
+dotnet build                      # build the whole solution
+dotnet run --project src/OwnLang  # execute the interpreter
 ```
 
-The code to interpret is defined as a string inside `Program.cs`, which wires up
-the full pipeline: source → tokens → AST → execution.
+`dotnet run` needs `--project` because the solution sits at the root with no
+project file there. The code to interpret is defined as a string inside
+`src/OwnLang/Program.cs`, which wires up the full pipeline:
+source → tokens → AST → execution.
+
+## Testing
+
+The project has an NUnit regression suite in `tests/OwnLang.Tests`, with one
+fixture per pipeline stage:
+
+| Fixture | Covers |
+|---|---|
+| `LexerTests` | text → tokens (`DetectString`, `DetectVals`, `DetectCodeBlock`, keywords, operators, errors) |
+| `ParserTests` | tokens → AST (precedence, associativity, call shape, syntax errors) |
+| `InterpreterTests` | end-to-end execution (arithmetic, precedence, variables, `term.out` output) |
+| `EnvironmentTests` | the runtime variable store |
+
+```bash
+dotnet test                                          # all tests (whole solution)
+dotnet test --filter FullyQualifiedName~LexerTests   # one fixture
+dotnet test --filter Name=DetectString               # one test
+```
+
+`InterpreterTests` verify behavior end-to-end and capture `term.out` output by
+redirecting `Console.Out`. The suite accesses the interpreter's `internal` types
+through `InternalsVisibleTo` declared in `src/OwnLang/OwnLang.csproj`.
 
 ## The pipeline
 
@@ -90,26 +118,32 @@ output is wired to `Console.WriteLine` in this version.
 
 ```
 own_pl/
-├── Program.cs                     Entry point; wires up the pipeline
-├── own_pl.csproj
-└── internas/
-    ├── Token.cs                   A token (type, lexeme, line, column)
-    ├── TokenTypes.cs              enum TokenType (all categories)
-    ├── lexer.cs                   Lexer : ILexer
-    ├── Parser.cs                  Parser : IParser
-    ├── Environment.cs             Runtime variables
-    ├── Ast/
-    │   ├── Expr.cs                Expressions (produce a value)
-    │   └── Stmt.cs                Statements (perform actions)
-    └── Contracts/
-        ├── Ilexer.cs              interface ILexer
-        ├── IParser.cs             interface IParser
-        ├── IInterpreter.cs        interface IInterpreter
-        └── Interpreter.cs         Interpreter : IInterpreter
+├── OwnLang.sln                        The solution
+├── src/
+│   └── OwnLang/                       Interpreter project (assembly OwnLang)
+│       ├── OwnLang.csproj
+│       ├── Program.cs                 Entry point; wires up the pipeline
+│       └── Internal/
+│           ├── Token.cs               A token (type, lexeme, line, column)
+│           ├── TokenTypes.cs          enum TokenType (all categories)
+│           ├── Lexer.cs               Lexer : ILexer
+│           ├── Parser.cs              Parser : IParser
+│           ├── Environment.cs         Runtime variables
+│           ├── Interpreter.cs         Interpreter : IInterpreter
+│           ├── Ast/
+│           │   ├── Expr.cs            Expressions (produce a value)
+│           │   └── Stmt.cs            Statements (perform actions)
+│           └── Contracts/
+│               ├── ILexer.cs          interface ILexer
+│               ├── IParser.cs         interface IParser
+│               └── IInterpreter.cs    interface IInterpreter
+└── tests/
+    └── OwnLang.Tests/                 NUnit regression suite
 ```
 
-Namespaces: the core lives in `Own_Lang.Internal`; the contracts (and the
-interpreter implementation) in `Own_Lang.Internal.Contracts`.
+Namespaces: the core lives in `Own_Lang.Internal`; the contract interfaces and
+the interpreter implementation in `Own_Lang.Internal.Contracts`. (Namespaces are
+independent of the `src/` folder layout.)
 
 ## The AST
 
