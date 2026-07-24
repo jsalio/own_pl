@@ -108,6 +108,7 @@ internal sealed class Interpreter : IInterpreter
         return b.Operator switch
         {
             TokenType.PLUS => (int)left! + (int)right!,
+            TokenType.MINUS => (int)left! - (int)right!,
             _ => throw new System.Exception(
                      $"Operador no soportado: {b.Operator}")
         };

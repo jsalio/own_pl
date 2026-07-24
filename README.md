@@ -150,8 +150,8 @@ statement   → varDecl | exprStmt
 varDecl     → "let" IDENT "=" expression ";"
 exprStmt    → expression ";"
 
-expression  → addition
-addition    → call ( "+" call )*
+expression  → additive
+additive    → call ( ( "+" | "-" ) call )*
 call        → primary ( "." IDENT | "(" arguments? ")" )*
 arguments   → expression ( "," expression )*
 primary     → NUMBER | STRING | IDENT | "(" expression ")"
@@ -165,7 +165,7 @@ primary     → NUMBER | STRING | IDENT | "(" expression ")"
 
 ## Current limitations
 
-- Only the `+` operator (addition). No `- * /`.
+- Only the `+` and `-` operators (addition and subtraction). No `* /`.
 - Only integers and strings; no booleans or decimals.
 - No control flow (`if`, `while`).
 - No user-defined function calls or effective parameters (the grammar accepts
@@ -174,7 +174,8 @@ primary     → NUMBER | STRING | IDENT | "(" expression ")"
 
 ## Roadmap
 
-- [ ] `- * /` operators with precedence (a `multiplication` level in the parser).
+- [x] `-` operator (subtraction), sharing the `additive` level with `+`.
+- [ ] `* /` operators with precedence (a `multiplicative` level in the parser).
 - [ ] User-defined function calls + parameters (a chained `Environment` per scope).
 - [ ] Control flow: `if`, `while`.
 - [ ] Booleans and comparison operators.

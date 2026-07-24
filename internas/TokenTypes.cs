@@ -33,6 +33,8 @@ public enum TokenType
     EQUAL,
     /// <summary>Addition operator <c>+</c>.</summary>
     PLUS,
+    ///<summary>Subtraction operator <c>-</c>.</summary>
+    MINUS,
     /// <summary>Member-access operator <c>.</c>.</summary>
     DOT,
     /// <summary>Argument/parameter separator <c>,</c>.</summary>

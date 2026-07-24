@@ -6,7 +6,7 @@ string codigo = @"def program {
     {
         let val1 = 1;
         let val2 = 2;
-        let result = val1 + val2;
+        let result = val2 - val1;
         term.out(""resultado:"");
         term.out(result);
     }

@@ -60,6 +60,7 @@ internal sealed class Lexer : ILexer
             case ';': AddToken(TokenType.SEMICOLON); break;
             case '=': AddToken(TokenType.EQUAL); break;
             case '+': AddToken(TokenType.PLUS); break;
+            case '-': AddToken(TokenType.MINUS); break;
             case '.': AddToken(TokenType.DOT); break;
             case ',': AddToken(TokenType.COMMA); break;
 

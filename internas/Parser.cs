@@ -153,15 +153,18 @@ internal sealed class Parser : IParser
 
     // ---- Gramática: expresiones ----
 
-    // Expression -> Addition
-    private Expr Expression() => Addition();
+    // Expression -> Additive
+    private Expr Expression() => Additive();
 
-    // Addition -> Call ( "+" Call )*
-    private Expr Addition()
+    // Additive -> Call ( ("+" | "-") Call )*
+    // '+' y '-' comparten nivel de precedencia y asociatividad izquierda,
+    // por eso van en el MISMO método (un método por nivel, no por operador).
+    // El mismo bucle empareja ambos, permitiendo mezclas como 10 - 2 + 3.
+    private Expr Additive()
     {
         Expr expr = Call();
 
-        while (Match(TokenType.PLUS))
+        while (Match(TokenType.PLUS, TokenType.MINUS))
         {
             TokenType op = Previous().Type;
             Expr right = Call();
@@ -249,6 +252,11 @@ internal sealed class Parser : IParser
             $"Error de sintaxis: se esperaba una expresión, se encontró " +
             $"'{token.Lexeme}' ({token.Type}) en la línea {token.Line}, columna {token.Column}");
     }
+
+    // private Expr BuildNumericToken()
+    // {
+    //     
+    // }
 
     // ---- Helpers: navegación sobre los tokens ----
 
