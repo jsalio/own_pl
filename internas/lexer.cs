@@ -1,7 +1,14 @@
 using System.Collections.Generic;
+using Own_Lang.Internal.Contracts;
 
 namespace Own_Lang.Internal;
 
+/// <summary>
+/// Stage 1 implementation: scans source text into tokens with a single
+/// left-to-right pass, using a character cursor (<c>current</c>) and a marker
+/// (<c>start</c>) for the token currently being read. Keywords are told apart
+/// from identifiers via the static <see cref="Keywords"/> table.
+/// </summary>
 internal sealed class Lexer : ILexer
 {
     private static readonly Dictionary<string, TokenType> Keywords = new()
@@ -20,11 +27,14 @@ internal sealed class Lexer : ILexer
     private int line = 1;
     private int column = 1;
 
+    /// <summary>Creates a lexer over the given source text.</summary>
+    /// <param name="source">The full source code to tokenize.</param>
     public Lexer(string source)
     {
         this.source = source;
     }
 
+    /// <inheritdoc/>
     public IReadOnlyList<Token> Tokenize()
     {
         while (!IsAtEnd())

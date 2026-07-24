@@ -1,12 +1,22 @@
 using System.Collections.Generic;
+using Own_Lang.Internal.Contracts;
 
 namespace Own_Lang.Internal;
 
+/// <summary>
+/// Stage 2 implementation: a recursive-descent parser. Holds a cursor
+/// (<c>current</c>) over the token list and exposes one private method per
+/// grammar rule. Operator precedence is encoded by the call order of the
+/// expression methods (Expression → Addition → Call → Primary), not by any
+/// explicit precedence table.
+/// </summary>
 internal sealed class Parser : IParser
 {
     private readonly IReadOnlyList<Token> tokens;
     private int current = 0;
 
+    /// <summary>Creates a parser over a token stream (as produced by the lexer).</summary>
+    /// <param name="tokens">The tokens to parse; must end with an <c>EOF</c> token.</param>
     public Parser(IReadOnlyList<Token> tokens)
     {
         this.tokens = tokens;
@@ -14,6 +24,7 @@ internal sealed class Parser : IParser
 
     // ---- Punto de entrada (contrato de IParser) ----
 
+    /// <inheritdoc/>
     public ProgramDecl Parse()
     {
         ProgramDecl program = Program();

@@ -1,4 +1,5 @@
 using Own_Lang.Internal;
+using Own_Lang.Internal.Contracts;
 
 string codigo = @"def program {
     function empty Main()

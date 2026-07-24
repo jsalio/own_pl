@@ -1,11 +1,19 @@
-namespace Own_Lang.Internal;
+namespace Own_Lang.Internal.Contracts;
 
+/// <summary>
+/// Stage 3 implementation: a tree-walking interpreter. Splits traversal into
+/// <c>Evaluate</c> (for <see cref="Expr"/>, returning a value) and <c>Execute</c>
+/// (for <see cref="Stmt"/>, performing an action), both dispatching by pattern
+/// matching over the AST record types. Variables are held in a single
+/// <see cref="Environment"/>.
+/// </summary>
 internal sealed class Interpreter : IInterpreter
 {
     private readonly Environment environment = new();
 
     // ---- Punto de entrada (contrato de IInterpreter) ----
 
+    /// <inheritdoc/>
     public void Interpret(ProgramDecl program)
     {
         FunctionDecl? main = null;
