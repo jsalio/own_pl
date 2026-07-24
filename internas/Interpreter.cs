@@ -1,3 +1,5 @@
+using own_pl.internas.Error;
+
 namespace Own_Lang.Internal.Contracts;
 
 /// <summary>
@@ -104,11 +106,22 @@ internal sealed class Interpreter : IInterpreter
     {
         object? left = Evaluate(b.Left);
         object? right = Evaluate(b.Right);
+        
+        int TryDivide(object? a, object? b)
+        {
+            if (b is int divisor && divisor == 0)
+            {
+                throw new MathError("Divission by zero detected");
+            }
+            return (int)a! / (int)b!;
+        }
 
         return b.Operator switch
         {
             TokenType.PLUS => (int)left! + (int)right!,
             TokenType.MINUS => (int)left! - (int)right!,
+            TokenType.STAR => (int)left! * (int)right!,
+            TokenType.SLASH => TryDivide(left, right),
             _ => throw new System.Exception(
                      $"Operador no soportado: {b.Operator}")
         };

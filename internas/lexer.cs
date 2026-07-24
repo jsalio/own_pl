@@ -63,6 +63,8 @@ internal sealed class Lexer : ILexer
             case '-': AddToken(TokenType.MINUS); break;
             case '.': AddToken(TokenType.DOT); break;
             case ',': AddToken(TokenType.COMMA); break;
+            case '*': AddToken(TokenType.STAR); break;
+            case '/': AddToken(TokenType.SLASH);  break;
 
             case '"': String(); break;
 

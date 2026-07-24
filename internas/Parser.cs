@@ -8,8 +8,8 @@ namespace Own_Lang.Internal;
 /// Stage 2 implementation: a recursive-descent parser. Holds a cursor
 /// (<c>current</c>) over the token list and exposes one private method per
 /// grammar rule. Operator precedence is encoded by the call order of the
-/// expression methods (Expression → Addition → Call → Primary), not by any
-/// explicit precedence table.
+/// expression methods (Expression → Additive → Multiplicative → Call → Primary),
+/// not by any explicit precedence table.
 /// </summary>
 internal sealed class Parser : IParser
 {
@@ -181,9 +181,24 @@ internal sealed class Parser : IParser
     // El mismo bucle empareja ambos, permitiendo mezclas como 10 - 2 + 3.
     private Expr Additive()
     {
-        Expr expr = Call();
+        
+        Expr expr = Multiplicative();
 
         while (Match(TokenType.PLUS, TokenType.MINUS))
+        {
+            TokenType op = Previous().Type;
+            Expr right = Multiplicative();
+            expr = new Binary(expr, op, right);
+        }
+
+        return expr;
+    }
+    
+    private Expr Multiplicative()
+    {
+        Expr expr = Call();
+
+        while (Match(TokenType.STAR, TokenType.SLASH))
         {
             TokenType op = Previous().Type;
             Expr right = Call();

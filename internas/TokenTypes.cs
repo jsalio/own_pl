@@ -36,11 +36,11 @@ public enum TokenType
     ///<summary>Subtraction operator <c>-</c>.</summary>
     MINUS,
     ///<summary>Multiply operator</summary>
-    MULTIPLY,
+    STAR,
     /// <summary>
     /// Divider opetator
     /// </summary>
-    DIVIDER,
+    SLASH,
     /// <summary>Member-access operator <c>.</c>.</summary>
     DOT,
     /// <summary>Argument/parameter separator <c>,</c>.</summary>
