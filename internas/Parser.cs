@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using Own_Lang.Internal.Contracts;
 
 namespace Own_Lang.Internal;
@@ -15,11 +16,29 @@ internal sealed class Parser : IParser
     private readonly IReadOnlyList<Token> tokens;
     private int current = 0;
 
+    // Constructores de expresión primaria indexados por el token que las inicia.
+    // Se construye una sola vez por parser (no en cada llamada a Primary()).
+    private readonly Dictionary<TokenType, Func<Expr>> primaryBuilders;
+
+    // Tokens que pueden iniciar una expresión primaria. Se deriva del diccionario
+    // para que exista una sola fuente de verdad (evita listas desincronizadas).
+    private readonly TokenType[] primaryStartTokens;
+
     /// <summary>Creates a parser over a token stream (as produced by the lexer).</summary>
     /// <param name="tokens">The tokens to parse; must end with an <c>EOF</c> token.</param>
     public Parser(IReadOnlyList<Token> tokens)
     {
         this.tokens = tokens;
+
+        primaryBuilders = new Dictionary<TokenType, Func<Expr>>
+        {
+            { TokenType.NUMBER,     BuildNumericToken },
+            { TokenType.STRING,     BuildStringToken },
+            { TokenType.IDENTIFIER, BuildIdentifierToken },
+            { TokenType.LPAREN,     BuildParenToken },
+        };
+
+        primaryStartTokens = primaryBuilders.Keys.ToArray();
     }
 
     // ---- Punto de entrada (contrato de IParser) ----
@@ -221,30 +240,9 @@ internal sealed class Parser : IParser
     // Primary -> NUMBER | STRING | IDENTIFIER | "(" Expression ")"
     private Expr Primary()
     {
-        if (Match(TokenType.NUMBER))
+        if (Match(primaryStartTokens))
         {
-            int value = int.Parse(Previous().Lexeme);
-            return new NumberLiteral(value);
-        }
-
-        if (Match(TokenType.STRING))
-        {
-            // el lexeme trae las comillas -> las quitamos
-            string raw = Previous().Lexeme;
-            string value = raw.Substring(1, raw.Length - 2);
-            return new StringLiteral(value);
-        }
-
-        if (Match(TokenType.IDENTIFIER))
-        {
-            return new Variable(Previous().Lexeme);
-        }
-
-        if (Match(TokenType.LPAREN))
-        {
-            Expr expr = Expression();
-            Consume(TokenType.RPAREN, "se esperaba ')' para cerrar la expresión");
-            return expr;
+            return primaryBuilders[Previous().Type]();
         }
 
         Token token = Peek();
@@ -253,10 +251,28 @@ internal sealed class Parser : IParser
             $"'{token.Lexeme}' ({token.Type}) en la línea {token.Line}, columna {token.Column}");
     }
 
-    // private Expr BuildNumericToken()
-    // {
-    //     
-    // }
+    private Expr BuildNumericToken()
+    {
+        int value = int.Parse(Previous().Lexeme);
+        return new NumberLiteral(value);
+    }
+
+    private Expr BuildStringToken()
+    {
+        string raw = Previous().Lexeme;
+        string value = raw.Substring(1, raw.Length - 2);
+        return new StringLiteral(value);
+    }
+
+    private Expr BuildIdentifierToken()
+        => new Variable(Previous().Lexeme);
+
+    private Expr BuildParenToken()
+    {
+        Expr expr = Expression();
+        Consume(TokenType.RPAREN, "se esperaba ')' para cerrar la expresión");
+        return expr;
+    }
 
     // ---- Helpers: navegación sobre los tokens ----
 

@@ -35,6 +35,12 @@ public enum TokenType
     PLUS,
     ///<summary>Subtraction operator <c>-</c>.</summary>
     MINUS,
+    ///<summary>Multiply operator</summary>
+    MULTIPLY,
+    /// <summary>
+    /// Divider opetator
+    /// </summary>
+    DIVIDER,
     /// <summary>Member-access operator <c>.</c>.</summary>
     DOT,
     /// <summary>Argument/parameter separator <c>,</c>.</summary>
