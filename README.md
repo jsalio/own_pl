@@ -139,22 +139,23 @@ Two families of nodes:
 ## Grammar (current version)
 
 ```
-program     → "def" IDENT block
-declaration → function | statement
-function    → "function" returnType IDENT "(" params? ")" block
-returnType  → "empty" | IDENT
-params      → IDENT ( "," IDENT )*
-block       → "{" statement* "}"
+program        → "def" IDENT block
+declaration    → function | statement
+function       → "function" returnType IDENT "(" params? ")" block
+returnType     → "empty" | IDENT
+params         → IDENT ( "," IDENT )*
+block          → "{" statement* "}"
 
-statement   → varDecl | exprStmt
-varDecl     → "let" IDENT "=" expression ";"
-exprStmt    → expression ";"
+statement      → varDecl | exprStmt
+varDecl        → "let" IDENT "=" expression ";"
+exprStmt       → expression ";"
 
-expression  → additive
-additive    → call ( ( "+" | "-" ) call )*
-call        → primary ( "." IDENT | "(" arguments? ")" )*
-arguments   → expression ( "," expression )*
-primary     → NUMBER | STRING | IDENT | "(" expression ")"
+expression     → additive
+additive       → multiplicative ( ( "+" | "-" ) multiplicative )*
+multiplicative → call ( ( "*" | "/" ) call )*
+call           → primary ( "." IDENT | "(" arguments? ")" )*
+arguments      → expression ( "," expression )*
+primary        → NUMBER | STRING | IDENT | "(" expression ")"
 ```
 
 ## Execution conventions
@@ -165,8 +166,9 @@ primary     → NUMBER | STRING | IDENT | "(" expression ")"
 
 ## Current limitations
 
-- Only the `+` and `-` operators (addition and subtraction). No `* /`.
-- Only integers and strings; no booleans or decimals.
+- Arithmetic operators `+ - * /` only. No comparison or boolean operators.
+- Only integers and strings — no booleans or decimals; integer `/` truncates
+  (e.g. `7 / 2` is `3`).
 - No control flow (`if`, `while`).
 - No user-defined function calls or effective parameters (the grammar accepts
   them, but the interpreter only runs `Main` and `term.out`).
@@ -175,7 +177,7 @@ primary     → NUMBER | STRING | IDENT | "(" expression ")"
 ## Roadmap
 
 - [x] `-` operator (subtraction), sharing the `additive` level with `+`.
-- [ ] `* /` operators with precedence (a `multiplicative` level in the parser).
+- [x] `* /` operators with precedence (a `multiplicative` level below `additive`).
 - [ ] User-defined function calls + parameters (a chained `Environment` per scope).
 - [ ] Control flow: `if`, `while`.
 - [ ] Booleans and comparison operators.
