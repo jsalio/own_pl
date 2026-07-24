@@ -80,6 +80,37 @@ public class LexerTests
     }
 
     [Test]
+    public void DetectComparisonOperators()
+    {
+        Assert.That(TokenTypesOf("== != < <= > >="), Is.EqualTo(new[]
+        {
+            TokenType.EQUAL_EQUAL,
+            TokenType.BANG_EQUAL,
+            TokenType.LESS,
+            TokenType.LESS_EQUAL,
+            TokenType.GREATER,
+            TokenType.GREATER_EQUAL,
+        }));
+    }
+
+    [Test]
+    public void TwoCharOperatorIsASingleToken()
+    {
+        // '<=' debe ser UN token LESS_EQUAL, no LESS + EQUAL
+        Assert.That(TokenTypesOf("<="), Is.EqualTo(new[] { TokenType.LESS_EQUAL }));
+    }
+
+    [Test]
+    public void DetectBooleanKeywords()
+    {
+        Assert.That(TokenTypesOf("true false"), Is.EqualTo(new[]
+        {
+            TokenType.TRUE,
+            TokenType.FALSE,
+        }));
+    }
+
+    [Test]
     public void DetectVarDeclarationSequence()
     {
         Assert.That(TokenTypesOf("let val1 = 1;"), Is.EqualTo(new[]

@@ -4,10 +4,14 @@ using Own_Lang.Internal.Contracts;
 string codigo = @"def program {
     function empty Main()
     {
-        term.out(2 + 3 * 4);
-        term.out(10 - 6 / 2);
-        term.out(2 * 3 + 4);
-        term.out(20 / 4 / 5);
+        term.out(1 < 2);
+        term.out(2 <= 2);
+        term.out(3 == 3);
+        term.out(3 != 4);
+        term.out(true);
+        term.out(false);
+        term.out(1 + 2 == 3);
+        term.out(2 * 3 > 5);
     }
 }";
 

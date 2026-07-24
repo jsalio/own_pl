@@ -76,6 +76,30 @@ public class ParserTests
     }
 
     [Test]
+    public void ComparisonBindsLooserThanArithmetic()
+    {
+        // 1 + 2 == 3  =>  (1 + 2) == 3
+        var expr = ParseExpression("1 + 2 == 3");
+
+        var outer = (Binary)expr;
+        Assert.That(outer.Operator, Is.EqualTo(TokenType.EQUAL_EQUAL));
+        Assert.That(outer.Right, Is.TypeOf<NumberLiteral>());   // el 3
+        Assert.That(outer.Left, Is.TypeOf<Binary>());           // (1 + 2)
+
+        var addition = (Binary)outer.Left;
+        Assert.That(addition.Operator, Is.EqualTo(TokenType.PLUS));
+    }
+
+    [Test]
+    public void ParsesBooleanLiteral()
+    {
+        var expr = ParseExpression("true");
+
+        Assert.That(expr, Is.TypeOf<BooleanLiteral>());
+        Assert.That(((BooleanLiteral)expr).Value, Is.True);
+    }
+
+    [Test]
     public void ParsesMemberCall()
     {
         // term.out(result)  =>  Call(MemberAccess(Variable term, "out"), [Variable result])

@@ -90,7 +90,7 @@ Source code (string)
 
 Converts the raw text into a list of `Token`. It recognizes:
 
-- **Symbols:** `{ } ( ) ; = + . ,`
+- **Symbols:** `{ } ( ) ; , . = + - * / == != < <= > >=`
 - **Numbers:** integers (`1`, `123`)
 - **Strings:** `"text"`
 - **Identifiers and keywords** (told apart using a keyword table)
@@ -155,8 +155,9 @@ Two families of nodes:
 |---|---|
 | `NumberLiteral` | a number: `1` |
 | `StringLiteral` | a text: `"hello"` |
+| `BooleanLiteral` | a boolean: `true`, `false` |
 | `Variable` | a reference to a name: `val1` |
-| `Binary` | a binary operation: `val1 + val2` |
+| `Binary` | a binary operation: `val1 + val2`, `a == b`, `x < 3` |
 | `MemberAccess` | member access: `term.out` |
 | `Call` | a call: `out(result)` |
 
@@ -184,12 +185,14 @@ statement      → varDecl | exprStmt
 varDecl        → "let" IDENT "=" expression ";"
 exprStmt       → expression ";"
 
-expression     → additive
+expression     → equality
+equality       → comparison ( ( "==" | "!=" ) comparison )*
+comparison     → additive ( ( "<" | "<=" | ">" | ">=" ) additive )*
 additive       → multiplicative ( ( "+" | "-" ) multiplicative )*
 multiplicative → call ( ( "*" | "/" ) call )*
 call           → primary ( "." IDENT | "(" arguments? ")" )*
 arguments      → expression ( "," expression )*
-primary        → NUMBER | STRING | IDENT | "(" expression ")"
+primary        → NUMBER | STRING | "true" | "false" | IDENT | "(" expression ")"
 ```
 
 ## Execution conventions
@@ -200,10 +203,12 @@ primary        → NUMBER | STRING | IDENT | "(" expression ")"
 
 ## Current limitations
 
-- Arithmetic operators `+ - * /` only. No comparison or boolean operators.
-- Only integers and strings — no booleans or decimals; integer `/` truncates
+- Arithmetic (`+ - * /`), comparison (`< <= > >=`) and equality (`== !=`)
+  operators. No logical operators (`&&`, `||`, `!`) yet.
+- Values are integers, strings and booleans — no decimals; integer `/` truncates
   (e.g. `7 / 2` is `3`).
-- No control flow (`if`, `while`).
+- No control flow (`if`, `while`) yet — comparisons produce booleans but nothing
+  consumes them for branching.
 - No user-defined function calls or effective parameters (the grammar accepts
   them, but the interpreter only runs `Main` and `term.out`).
 - `term.out` is a hardcoded shortcut, not a real object with methods.
@@ -212,9 +217,11 @@ primary        → NUMBER | STRING | IDENT | "(" expression ")"
 
 - [x] `-` operator (subtraction), sharing the `additive` level with `+`.
 - [x] `* /` operators with precedence (a `multiplicative` level below `additive`).
-- [ ] User-defined function calls + parameters (a chained `Environment` per scope).
+- [x] Booleans (`true`/`false`) and comparison/equality operators
+  (`< <= > >= == !=`), with `equality` and `comparison` precedence levels.
 - [ ] Control flow: `if`, `while`.
-- [ ] Booleans and comparison operators.
+- [ ] Logical operators: `&&`, `||`, `!`.
+- [ ] User-defined function calls + parameters (a chained `Environment` per scope).
 - [ ] Real objects instead of the `term.out` shortcut.
 - [ ] Read `.own` source files and/or a REPL.
 

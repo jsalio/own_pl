@@ -8,8 +8,8 @@ namespace Own_Lang.Internal;
 /// Stage 2 implementation: a recursive-descent parser. Holds a cursor
 /// (<c>current</c>) over the token list and exposes one private method per
 /// grammar rule. Operator precedence is encoded by the call order of the
-/// expression methods (Expression → Additive → Multiplicative → Call → Primary),
-/// not by any explicit precedence table.
+/// expression methods (Expression → Equality → Comparison → Additive →
+/// Multiplicative → Call → Primary), not by any explicit precedence table.
 /// </summary>
 internal sealed class Parser : IParser
 {
@@ -36,6 +36,8 @@ internal sealed class Parser : IParser
             { TokenType.STRING,     BuildStringToken },
             { TokenType.IDENTIFIER, BuildIdentifierToken },
             { TokenType.LPAREN,     BuildParenToken },
+            { TokenType.TRUE,       BuildBooleanToken },
+            { TokenType.FALSE,      BuildBooleanToken },
         };
 
         primaryStartTokens = primaryBuilders.Keys.ToArray();
@@ -172,8 +174,8 @@ internal sealed class Parser : IParser
 
     // ---- Gramática: expresiones ----
 
-    // Expression -> Additive
-    private Expr Expression() => Additive();
+    // Expression -> Equality
+    private Expr Expression() => Equality();
 
     // Additive -> Call ( ("+" | "-") Call )*
     // '+' y '-' comparten nivel de precedencia y asociatividad izquierda,
@@ -181,7 +183,7 @@ internal sealed class Parser : IParser
     // El mismo bucle empareja ambos, permitiendo mezclas como 10 - 2 + 3.
     private Expr Additive()
     {
-        
+
         Expr expr = Multiplicative();
 
         while (Match(TokenType.PLUS, TokenType.MINUS))
@@ -193,7 +195,36 @@ internal sealed class Parser : IParser
 
         return expr;
     }
-    
+
+    private Expr Equality()
+    {
+        Expr expr = Comparison();
+
+        while (Match(TokenType.EQUAL_EQUAL, TokenType.BANG_EQUAL))
+        {
+            TokenType op = Previous().Type;
+            Expr right = Comparison();
+            expr = new Binary(expr, op, right);
+        }
+
+        return expr;
+    }
+
+    private Expr Comparison()
+    {
+        Expr expr = Additive();
+
+        while (Match(TokenType.EQUAL_EQUAL, TokenType.BANG_EQUAL, TokenType.LESS,
+            TokenType.LESS_EQUAL, TokenType.GREATER, TokenType.GREATER_EQUAL))
+        {
+            TokenType op = Previous().Type;
+            Expr right = Additive();
+            expr = new Binary(expr, op, right);
+        }
+
+        return expr;
+    }
+
     private Expr Multiplicative()
     {
         Expr expr = Call();
@@ -287,6 +318,12 @@ internal sealed class Parser : IParser
         Expr expr = Expression();
         Consume(TokenType.RPAREN, "se esperaba ')' para cerrar la expresión");
         return expr;
+    }
+
+    private Expr BuildBooleanToken()
+    {
+        bool value = Previous().Type == TokenType.TRUE;
+        return new BooleanLiteral(value);
     }
 
     // ---- Helpers: navegación sobre los tokens ----

@@ -101,6 +101,38 @@ public class InterpreterTests
     }
 
     [Test]
+    public void EvaluatesRelationalOperators()
+    {
+        Assert.That(Eval("1 < 2"), Is.EqualTo("True"));
+        Assert.That(Eval("2 <= 2"), Is.EqualTo("True"));
+        Assert.That(Eval("5 > 9"), Is.EqualTo("False"));
+        Assert.That(Eval("9 >= 9"), Is.EqualTo("True"));
+    }
+
+    [Test]
+    public void EvaluatesEqualityOperators()
+    {
+        Assert.That(Eval("3 == 3"), Is.EqualTo("True"));
+        Assert.That(Eval("3 != 4"), Is.EqualTo("True"));
+        Assert.That(Eval("3 == 4"), Is.EqualTo("False"));
+    }
+
+    [Test]
+    public void EvaluatesBooleanLiterals()
+    {
+        Assert.That(Eval("true"), Is.EqualTo("True"));
+        Assert.That(Eval("false"), Is.EqualTo("False"));
+    }
+
+    [Test]
+    public void ComparisonHasLowerPrecedenceThanArithmetic()
+    {
+        // se evalúa como (1 + 2) == 3  y  (2 * 3) > 5
+        Assert.That(Eval("1 + 2 == 3"), Is.EqualTo("True"));
+        Assert.That(Eval("2 * 3 > 5"), Is.EqualTo("True"));
+    }
+
+    [Test]
     public void DivisionByZeroThrowsMathError()
     {
         Assert.That(() => Eval("1 / 0"), Throws.TypeOf<MathError>());

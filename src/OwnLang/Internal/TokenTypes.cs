@@ -37,9 +37,7 @@ public enum TokenType
     MINUS,
     ///<summary>Multiply operator</summary>
     STAR,
-    /// <summary>
-    /// Divider opetator
-    /// </summary>
+    /// <summary> Divider opetator </summary>
     SLASH,
     /// <summary>Member-access operator <c>.</c>.</summary>
     DOT,
@@ -54,7 +52,30 @@ public enum TokenType
     /// <summary>A string literal, including its surrounding quotes in the lexeme.</summary>
     STRING,
 
+    //Comparison operators
+    /// <summary>Equal operator</summary>
+    EQUAL_EQUAL,
+    /// <summary>Less than operator</summary>
+    LESS_EQUAL,
+    /// <summary>Greater than operator</summary>
+    GREATER_EQUAL,
+    /// <summary>Not equal operator</summary>
+    BANG_EQUAL,
+    /// <summary>Less than operator</summary>
+    LESS,
+    /// <summary>Greater than operator</summary>
+    GREATER,
+    /// <summary>Not operator</summary>
+    BANG,
+
+    // Booleans
+    /// <summary>Boolean true value</summary>
+    TRUE,
+    /// <summary>Boolean false value</summary>
+    FALSE,
+
     // Control
     /// <summary>End-of-input marker; the last token in every stream.</summary>
-    EOF
+    EOF,
+
 }

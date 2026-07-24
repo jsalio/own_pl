@@ -71,9 +71,10 @@ internal sealed class Interpreter : IInterpreter
         {
             NumberLiteral n => n.Value,
             StringLiteral s => s.Value,
-            Variable v      => environment.Get(v.Name),
-            Binary b        => EvaluateBinary(b),
-            Call c          => EvaluateCall(c),
+            Variable v => environment.Get(v.Name),
+            Binary b => EvaluateBinary(b),
+            Call c => EvaluateCall(c),
+            BooleanLiteral b => b.Value,
             _ => throw new System.Exception(
                      $"Expresión no soportada: {expr.GetType().Name}")
         };
@@ -104,7 +105,7 @@ internal sealed class Interpreter : IInterpreter
     {
         object? left = Evaluate(b.Left);
         object? right = Evaluate(b.Right);
-        
+
         int TryDivide(object? a, object? b)
         {
             if (b is int divisor && divisor == 0)
@@ -114,14 +115,28 @@ internal sealed class Interpreter : IInterpreter
             return (int)a! / (int)b!;
         }
 
+        bool Less(object? a, object? b) => (int)a! < (int)b!;
+        bool LessOrEqual(object? a, object? b) => (int)a! <= (int)b!;
+        bool Greater(object? a, object? b) => (int)a! > (int)b!;
+        bool GreaterOrEqual(object? a, object? b) => (int)a! >= (int)b!;
+        bool Equals(object? a, object? b) => a!.Equals(b);
+
         return b.Operator switch
         {
             TokenType.PLUS => (int)left! + (int)right!,
             TokenType.MINUS => (int)left! - (int)right!,
             TokenType.STAR => (int)left! * (int)right!,
             TokenType.SLASH => TryDivide(left, right),
+            TokenType.EQUAL_EQUAL => Equals(left, right),
+            TokenType.BANG_EQUAL => !Equals(left, right),
+            TokenType.LESS => Less(left, right),
+            TokenType.LESS_EQUAL => LessOrEqual(left, right),
+            TokenType.GREATER => Greater(left, right),
+            TokenType.GREATER_EQUAL => GreaterOrEqual(left, right),
             _ => throw new System.Exception(
                      $"Operador no soportado: {b.Operator}")
         };
     }
+
+
 }

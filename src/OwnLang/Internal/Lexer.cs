@@ -13,10 +13,12 @@ internal sealed class Lexer : ILexer
 {
     private static readonly Dictionary<string, TokenType> Keywords = new()
     {
-        ["def"]      = TokenType.DEF,
+        ["def"] = TokenType.DEF,
         ["function"] = TokenType.FUNCTION,
-        ["empty"]    = TokenType.EMPTY,
-        ["let"]      = TokenType.LET,
+        ["empty"] = TokenType.EMPTY,
+        ["let"] = TokenType.LET,
+        ["true"] = TokenType.TRUE,
+        ["false"] = TokenType.FALSE,
     };
 
     private readonly string source;
@@ -58,13 +60,17 @@ internal sealed class Lexer : ILexer
             case '(': AddToken(TokenType.LPAREN); break;
             case ')': AddToken(TokenType.RPAREN); break;
             case ';': AddToken(TokenType.SEMICOLON); break;
-            case '=': AddToken(TokenType.EQUAL); break;
+            case '=': AddToken(Match('=') ? TokenType.EQUAL_EQUAL : TokenType.EQUAL); break;
+            case '!': AddToken(Match('=') ? TokenType.BANG_EQUAL : TokenType.BANG); break;
+            case '<': AddToken(Match('=') ? TokenType.LESS_EQUAL : TokenType.LESS); break;
+            case '>': AddToken(Match('=') ? TokenType.GREATER_EQUAL : TokenType.GREATER); break;
             case '+': AddToken(TokenType.PLUS); break;
             case '-': AddToken(TokenType.MINUS); break;
             case '.': AddToken(TokenType.DOT); break;
             case ',': AddToken(TokenType.COMMA); break;
             case '*': AddToken(TokenType.STAR); break;
-            case '/': AddToken(TokenType.SLASH);  break;
+            case '/': AddToken(TokenType.SLASH); break;
+
 
             case '"': String(); break;
 
@@ -171,5 +177,12 @@ internal sealed class Lexer : ILexer
         tokens.Add(new Token(type, lexeme, line, column));
     }
 
-    private bool Match(char expected) => throw new System.NotImplementedException();
+    private bool Match(char expected)
+    {
+        if (IsAtEnd()) return false;
+        if (source[current] != expected) return false;
+        current++;
+        column++;
+        return true;
+    }
 }

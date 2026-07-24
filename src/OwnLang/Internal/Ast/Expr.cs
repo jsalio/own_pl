@@ -17,12 +17,23 @@ public record NumberLiteral(int Value) : Expr;
 /// <param name="Value">The text content, without the surrounding quotes.</param>
 public record StringLiteral(string Value) : Expr;
 
+/// <summary>A boolean literal, e.g. <c>true</c>, <c>false</c>.</summary>
+/// <param name="Value">The parsed boolean value.</param>
+public record BooleanLiteral(bool Value) : Expr;
+
 /// <summary>
 /// A reference to a named variable, e.g. <c>val1</c>. Resolved against the
 /// interpreter's <c>Environment</c> at evaluation time.
 /// </summary>
 /// <param name="Name">The variable's identifier.</param>
 public record Variable(string Name) : Expr;
+
+/// <summary>
+/// A unary operation, e.g. <c>-x</c>, <c>!true</c>.
+/// </summary>
+/// <param name="Operator">The operator token type (e.g. <c>MINUS</c>, <c>BANG</c>).</param>
+/// <param name="Operand">The operand expression.</param>
+public record Unary(TokenType Operator, Expr Operand) : Expr;
 
 /// <summary>
 /// A binary operation, e.g. <c>val1 + val2</c>. Both operands are themselves
