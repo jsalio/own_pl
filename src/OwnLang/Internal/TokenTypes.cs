@@ -17,6 +17,14 @@ public enum TokenType
     EMPTY,
     /// <summary>The <c>let</c> keyword (variable declaration).</summary>
     LET,
+    /// <summary>The <c>when</c> keyword (conditional).</summary>
+    WHEN,
+    /// <summary>The <c>else</c> keyword (conditional alternative).</summary>
+    ELSE,
+    /// <summary>The <c>loop</c> keyword (loop, in all its forms).</summary>
+    LOOP,
+    /// <summary>The <c>stop</c> keyword (break out of the innermost loop).</summary>
+    STOP,
 
     // Symbols
     /// <summary>Left brace <c>{</c>.</summary>
@@ -35,14 +43,22 @@ public enum TokenType
     PLUS,
     ///<summary>Subtraction operator <c>-</c>.</summary>
     MINUS,
-    ///<summary>Multiply operator</summary>
+    /// <summary>Multiplication operator <c>*</c>.</summary>
     STAR,
-    /// <summary> Divider opetator </summary>
+    /// <summary>Division operator <c>/</c>.</summary>
     SLASH,
     /// <summary>Member-access operator <c>.</c>.</summary>
     DOT,
     /// <summary>Argument/parameter separator <c>,</c>.</summary>
     COMMA,
+    /// <summary>Left bracket <c>[</c> (opens a counted-loop range).</summary>
+    LBRACKET,
+    /// <summary>Right bracket <c>]</c> (closes a counted-loop range).</summary>
+    RBRACKET,
+    /// <summary>Colon <c>:</c> (binds the counter name in a counted loop).</summary>
+    COLON,
+    /// <summary>Inclusive range operator <c>...</c> (counted-loop bounds).</summary>
+    RANGE,
 
     // Literals and identifiers
     /// <summary>An identifier: a variable or function name (e.g. <c>val1</c>).</summary>

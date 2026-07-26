@@ -38,6 +38,10 @@ public class InterpreterTests
     private static string Eval(string expression)
         => Run($"def program {{ function empty Main() {{ term.out({expression}); }} }}");
 
+    // Wraps statements in a Main body and returns what the program printed.
+    private static string RunMain(string body)
+        => Run($"def program {{ function empty Main() {{ {body} }} }}");
+
     [Test]
     public void PrintsString()
     {
@@ -130,6 +134,79 @@ public class InterpreterTests
         // se evalúa como (1 + 2) == 3  y  (2 * 3) > 5
         Assert.That(Eval("1 + 2 == 3"), Is.EqualTo("True"));
         Assert.That(Eval("2 * 3 > 5"), Is.EqualTo("True"));
+    }
+
+    [Test]
+    public void WhenTrueExecutesBody()
+    {
+        Assert.That(RunMain(@"when(true) { term.out(""si""); }"), Is.EqualTo("si"));
+    }
+
+    [Test]
+    public void WhenFalseSkipsBody()
+    {
+        Assert.That(RunMain(@"when(false) { term.out(""no""); }"), Is.Empty);
+    }
+
+    [Test]
+    public void WhenFalseRunsElseBranch()
+    {
+        Assert.That(
+            RunMain(@"when(false) { term.out(""a""); } else { term.out(""b""); }"),
+            Is.EqualTo("b"));
+    }
+
+    [Test]
+    public void ElseWhenChainSelectsMatchingBranch()
+    {
+        Assert.That(
+            RunMain(@"when(false) { term.out(""a""); }
+                      else when(true) { term.out(""b""); }
+                      else { term.out(""c""); }"),
+            Is.EqualTo("b"));
+    }
+
+    [Test]
+    public void WhenConditionWithComparison()
+    {
+        Assert.That(RunMain(@"when(1 + 2 == 3) { term.out(""ok""); }"), Is.EqualTo("ok"));
+    }
+
+    [Test]
+    public void WhenConditionMustBeBoolean()
+    {
+        Assert.That(() => RunMain("when(5) { }"), Throws.Exception);
+    }
+
+    [Test]
+    public void RangeLoopIteratesInclusive()
+    {
+        // loop[i: 1...3] recorre 1, 2, 3
+        Assert.That(
+            RunMain(@"loop[i: 1...3] { term.out(i); }"),
+            Is.EqualTo("1\n2\n3"));
+    }
+
+    [Test]
+    public void WhileLoopRunsWhileConditionHolds()
+    {
+        Assert.That(
+            RunMain(@"let x = 0;
+                      loop when(x < 3) { term.out(x); let x = x + 1; }"),
+            Is.EqualTo("0\n1\n2"));
+    }
+
+    [Test]
+    public void InfiniteLoopExitsWithStop()
+    {
+        Assert.That(
+            RunMain(@"let n = 0;
+                      loop {
+                          when(n == 2) { stop; }
+                          term.out(n);
+                          let n = n + 1;
+                      }"),
+            Is.EqualTo("0\n1"));
     }
 
     [Test]

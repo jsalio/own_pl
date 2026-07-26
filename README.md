@@ -90,7 +90,7 @@ Source code (string)
 
 Converts the raw text into a list of `Token`. It recognizes:
 
-- **Symbols:** `{ } ( ) ; , . = + - * / == != < <= > >=`
+- **Symbols:** `{ } ( ) [ ] ; , : . ... = + - * / == != < <= > >=`
 - **Numbers:** integers (`1`, `123`)
 - **Strings:** `"text"`
 - **Identifiers and keywords** (told apart using a keyword table)
@@ -168,6 +168,11 @@ Two families of nodes:
 | `VarDecl` | `let val1 = 1;` |
 | `ExpressionStmt` | an expression used as a statement: `term.out(...);` |
 | `Block` | a block `{ ... }` |
+| `WhenStmt` | a conditional: `when(c) { } else { }` |
+| `LoopStmt` | an infinite loop: `loop { }` |
+| `WhileStmt` | a pre-test loop: `loop when(c) { }` |
+| `RangeLoopStmt` | a counted loop: `loop[i: 1...3] { }` |
+| `StopStmt` | break out of the innermost loop: `stop;` |
 | `FunctionDecl` | `function empty Main() { ... }` |
 | `ProgramDecl` | `def program { ... }` (root node) |
 
@@ -181,8 +186,12 @@ returnType     → "empty" | IDENT
 params         → IDENT ( "," IDENT )*
 block          → "{" statement* "}"
 
-statement      → varDecl | exprStmt
+statement      → varDecl | whenStmt | loopStmt | stopStmt | exprStmt
 varDecl        → "let" IDENT "=" expression ";"
+whenStmt       → "when" "(" expression ")" block ( "else" ( whenStmt | block ) )?
+loopStmt       → "loop" ( "[" IDENT ":" expression "..." expression "]"
+                        | "when" "(" expression ")" )? block
+stopStmt       → "stop" ";"
 exprStmt       → expression ";"
 
 expression     → equality
@@ -207,8 +216,9 @@ primary        → NUMBER | STRING | "true" | "false" | IDENT | "(" expression "
   operators. No logical operators (`&&`, `||`, `!`) yet.
 - Values are integers, strings and booleans — no decimals; integer `/` truncates
   (e.g. `7 / 2` is `3`).
-- No control flow (`if`, `while`) yet — comparisons produce booleans but nothing
-  consumes them for branching.
+- Conditionals (`when` / `else` / `else when`) and loops (`loop`, `loop when`,
+  `loop[i: 1...3]`, with `stop`) exist. Conditions must be booleans (no
+  truthiness coercion). `stop` outside a loop is an unhandled error.
 - No user-defined function calls or effective parameters (the grammar accepts
   them, but the interpreter only runs `Main` and `term.out`).
 - `term.out` is a hardcoded shortcut, not a real object with methods.
@@ -219,7 +229,9 @@ primary        → NUMBER | STRING | "true" | "false" | IDENT | "(" expression "
 - [x] `* /` operators with precedence (a `multiplicative` level below `additive`).
 - [x] Booleans (`true`/`false`) and comparison/equality operators
   (`< <= > >= == !=`), with `equality` and `comparison` precedence levels.
-- [ ] Control flow: `if`, `while`.
+- [x] Conditionals: `when` / `else` / `else when` (`WhenStmt`, bool condition).
+- [x] Loops: `loop` (infinite), `loop when` (while), `loop[i: 1...3]` (counted),
+  with `stop` (break via `BreakSignal`).
 - [ ] Logical operators: `&&`, `||`, `!`.
 - [ ] User-defined function calls + parameters (a chained `Environment` per scope).
 - [ ] Real objects instead of the `term.out` shortcut.

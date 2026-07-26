@@ -124,6 +124,66 @@ public class ParserTests
     }
 
     [Test]
+    public void ElseWhenChainsAsNestedWhenStmt()
+    {
+        // el "else when" debe parsearse como un WhenStmt anidado en el Else
+        var program = Parse(
+            "def program { function empty Main() { " +
+            "when(true) { } else when(false) { } } }");
+        var function = (FunctionDecl)program.Declarations[0];
+        var when = (WhenStmt)function.Body.Statements[0];
+
+        Assert.That(when.Else, Is.TypeOf<WhenStmt>());
+    }
+
+    [Test]
+    public void SimpleWhenHasNoElse()
+    {
+        var program = Parse(
+            "def program { function empty Main() { when(true) { } } }");
+        var function = (FunctionDecl)program.Declarations[0];
+        var when = (WhenStmt)function.Body.Statements[0];
+
+        Assert.That(when.Else, Is.Null);
+    }
+
+    // Returns the first statement of Main's body for the given source.
+    private static Stmt FirstStatement(string body)
+    {
+        var program = Parse(
+            $"def program {{ function empty Main() {{ {body} }} }}");
+        var function = (FunctionDecl)program.Declarations[0];
+        return function.Body.Statements[0];
+    }
+
+    [Test]
+    public void ParsesInfiniteLoop()
+    {
+        Assert.That(FirstStatement("loop { }"), Is.TypeOf<LoopStmt>());
+    }
+
+    [Test]
+    public void ParsesWhileLoop()
+    {
+        Assert.That(FirstStatement("loop when(true) { }"), Is.TypeOf<WhileStmt>());
+    }
+
+    [Test]
+    public void ParsesRangeLoopWithNamedCounter()
+    {
+        var stmt = FirstStatement("loop[i: 1...3] { }");
+
+        Assert.That(stmt, Is.TypeOf<RangeLoopStmt>());
+        Assert.That(((RangeLoopStmt)stmt).Variable, Is.EqualTo("i"));
+    }
+
+    [Test]
+    public void ParsesStopStatement()
+    {
+        Assert.That(FirstStatement("stop;"), Is.TypeOf<StopStmt>());
+    }
+
+    [Test]
     public void MissingSemicolonThrows()
     {
         Assert.That(

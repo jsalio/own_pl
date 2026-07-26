@@ -52,3 +52,33 @@ public record FunctionDecl(
 /// <param name="Name">The program's name.</param>
 /// <param name="Declarations">The top-level declarations inside the program.</param>
 public record ProgramDecl(string Name, IReadOnlyList<Stmt> Declarations) : Stmt;
+/// <summary>
+/// A conditional: <c>when(Condition) Then</c>, with an optional else branch.
+/// </summary>
+/// <param name="Condition">The condition; must evaluate to a boolean.</param>
+/// <param name="Then">The block run when the condition is true.</param>
+/// <param name="Else">Optional else branch: a <see cref="Block"/>, another
+/// <see cref="WhenStmt"/> (for <c>else when</c>), or null.</param>
+public record WhenStmt(Expr Condition, Block Then, Stmt? Else) : Stmt;
+
+/// <summary>An infinite loop: <c>loop { ... }</c>. Exits only via <c>stop</c>.</summary>
+/// <param name="Body">The block run repeatedly.</param>
+public record LoopStmt(Block Body) : Stmt;
+
+/// <summary>A pre-test loop: <c>loop when(Condition) { ... }</c>. Runs the body
+/// while the condition (a boolean) holds; may run zero times.</summary>
+/// <param name="Condition">The loop condition; must evaluate to a boolean.</param>
+/// <param name="Body">The block run on each iteration.</param>
+public record WhileStmt(Expr Condition, Block Body) : Stmt;
+
+/// <summary>A counted loop: <c>loop[Variable: From...To] { ... }</c>. Iterates
+/// inclusively from <c>From</c> to <c>To</c>, binding the counter to
+/// <c>Variable</c> on each iteration.</summary>
+/// <param name="Variable">Name bound to the current counter value.</param>
+/// <param name="From">Inclusive lower bound (integer).</param>
+/// <param name="To">Inclusive upper bound (integer).</param>
+/// <param name="Body">The block run on each iteration.</param>
+public record RangeLoopStmt(string Variable, Expr From, Expr To, Block Body) : Stmt;
+
+/// <summary>Breaks out of the innermost enclosing loop: <c>stop;</c>.</summary>
+public record StopStmt : Stmt;

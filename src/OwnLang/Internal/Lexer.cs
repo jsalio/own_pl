@@ -19,6 +19,10 @@ internal sealed class Lexer : ILexer
         ["let"] = TokenType.LET,
         ["true"] = TokenType.TRUE,
         ["false"] = TokenType.FALSE,
+        ["when"] = TokenType.WHEN,
+        ["else"] = TokenType.ELSE,
+        ["loop"] = TokenType.LOOP,
+        ["stop"] = TokenType.STOP
     };
 
     private readonly string source;
@@ -66,10 +70,28 @@ internal sealed class Lexer : ILexer
             case '>': AddToken(Match('=') ? TokenType.GREATER_EQUAL : TokenType.GREATER); break;
             case '+': AddToken(TokenType.PLUS); break;
             case '-': AddToken(TokenType.MINUS); break;
-            case '.': AddToken(TokenType.DOT); break;
+            case '.':
+                if (Match('.'))
+                {
+                    // vimos ".."; exigimos el tercer punto para formar "..."
+                    if (!Match('.'))
+                    {
+                        throw new System.Exception(
+                            $"Se esperaba '...' en la línea {line}, columna {column}");
+                    }
+                    AddToken(TokenType.RANGE);
+                }
+                else
+                {
+                    AddToken(TokenType.DOT);
+                }
+                break;
             case ',': AddToken(TokenType.COMMA); break;
             case '*': AddToken(TokenType.STAR); break;
             case '/': AddToken(TokenType.SLASH); break;
+            case '[': AddToken(TokenType.LBRACKET); break;
+            case ']': AddToken(TokenType.RBRACKET); break;
+            case ':': AddToken(TokenType.COLON); break;
 
 
             case '"': String(); break;

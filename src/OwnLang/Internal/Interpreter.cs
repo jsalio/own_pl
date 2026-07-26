@@ -57,6 +57,47 @@ internal sealed class Interpreter : IInterpreter
                 }
                 break;
 
+            case WhenStmt w:
+                if (IsTruthy(Evaluate(w.Condition)))
+                    Execute(w.Then);
+                else if (w.Else is not null)
+                    Execute(w.Else);
+                break;
+
+            case StopStmt:
+                throw new BreakSignal();
+
+            case LoopStmt l:
+                try
+                {
+                    while (true)
+                        Execute(l.Body);
+                }
+                catch (BreakSignal) { }
+                break;
+
+            case WhileStmt w:
+                try
+                {
+                    while (IsTruthy(Evaluate(w.Condition)))
+                        Execute(w.Body);
+                }
+                catch (BreakSignal) { }
+                break;
+
+            case RangeLoopStmt r:
+                int from = (int)Evaluate(r.From)!, to = (int)Evaluate(r.To)!;
+                try
+                {
+                    for (int index = from; index <= to; index++)
+                    {
+                        environment.Define(r.Variable, index); // expone el contador
+                        Execute(r.Body);
+                    }
+                }
+                catch (BreakSignal) { }
+                break;
+                
             default:
                 throw new System.Exception(
                     $"Sentencia no soportada: {stmt.GetType().Name}");
@@ -78,6 +119,12 @@ internal sealed class Interpreter : IInterpreter
             _ => throw new System.Exception(
                      $"Expresión no soportada: {expr.GetType().Name}")
         };
+    }
+
+    private static bool IsTruthy(object? value)
+    {
+        if (value is bool b) return b;
+        throw new System.Exception("La condición de 'when' debe ser booleana");
     }
 
     private object? EvaluateCall(Call call)

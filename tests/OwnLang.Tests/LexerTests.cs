@@ -111,6 +111,27 @@ public class LexerTests
     }
 
     [Test]
+    public void DetectLoopTokens()
+    {
+        Assert.That(TokenTypesOf("loop stop [ ] :"), Is.EqualTo(new[]
+        {
+            TokenType.LOOP,
+            TokenType.STOP,
+            TokenType.LBRACKET,
+            TokenType.RBRACKET,
+            TokenType.COLON,
+        }));
+    }
+
+    [Test]
+    public void RangeIsASingleTokenButDotStaysDot()
+    {
+        // '...' -> un RANGE ;  '.' solo -> DOT (para term.out)
+        Assert.That(TokenTypesOf("..."), Is.EqualTo(new[] { TokenType.RANGE }));
+        Assert.That(TokenTypesOf("."), Is.EqualTo(new[] { TokenType.DOT }));
+    }
+
+    [Test]
     public void DetectVarDeclarationSequence()
     {
         Assert.That(TokenTypesOf("let val1 = 1;"), Is.EqualTo(new[]
