@@ -68,6 +68,10 @@ public enum TokenType
     /// <summary>A string literal, including its surrounding quotes in the lexeme.</summary>
     STRING,
 
+    //Data type
+    TYPE_STRING,
+    TYPE_BOOL,
+
     //Comparison operators
     /// <summary>Equal operator</summary>
     EQUAL_EQUAL,

@@ -43,6 +43,8 @@ internal sealed class Interpreter : IInterpreter
         {
             case VarDecl d:
                 object? value = Evaluate(d.Initializer);
+                if(d.DeclareType is not null)
+                    CheckType(d.DeclareType, d.Name, value);
                 environment.Define(d.Name, value);
                 break;
 
@@ -106,6 +108,20 @@ internal sealed class Interpreter : IInterpreter
 
     // ---- Evaluación de expresiones (producen un valor) ----
 
+    private static void CheckType(string declareType, string name, object? value)
+    {
+        bool ok = declareType switch
+        {
+            "string" => value is string,
+            _ => true
+        };
+        if (!ok)
+            throw new System.Exception(
+                    $"Error in type : '{name}' is declare as {declareType} but ,"+
+                    $"received {value?.GetType().Name ?? null}"
+                    );
+    }
+
     private object? Evaluate(Expr expr)
     {
         return expr switch
@@ -148,6 +164,9 @@ internal sealed class Interpreter : IInterpreter
             "Llamada no soportada: por ahora solo existe 'term.out(...)'");
     }
 
+    private static string Stringify(object? value) 
+        => value?.ToString()??"";
+
     private object? EvaluateBinary(Binary b)
     {
         object? left = Evaluate(b.Left);
@@ -162,6 +181,15 @@ internal sealed class Interpreter : IInterpreter
             return (int)a! / (int)b!;
         }
 
+        object? Add(object? left, object? right)
+        {
+            if (left is string || right is string)
+                return Stringify(left) + Stringify(right);
+            else 
+               return (int)left! + (int)right!;
+                    
+        }
+
         bool Less(object? a, object? b) => (int)a! < (int)b!;
         bool LessOrEqual(object? a, object? b) => (int)a! <= (int)b!;
         bool Greater(object? a, object? b) => (int)a! > (int)b!;
@@ -170,7 +198,7 @@ internal sealed class Interpreter : IInterpreter
 
         return b.Operator switch
         {
-            TokenType.PLUS => (int)left! + (int)right!,
+            TokenType.PLUS => Add(left, right), //(int)left! + (int)right!,
             TokenType.MINUS => (int)left! - (int)right!,
             TokenType.STAR => (int)left! * (int)right!,
             TokenType.SLASH => TryDivide(left, right),

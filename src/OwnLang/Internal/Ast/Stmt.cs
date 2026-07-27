@@ -15,7 +15,7 @@ public abstract record Stmt;
 /// </summary>
 /// <param name="Name">The variable's identifier.</param>
 /// <param name="Initializer">The expression whose value initializes the variable.</param>
-public record VarDecl(string Name, Expr Initializer) : Stmt;
+public record VarDecl(string? DeclareType ,string Name, Expr Initializer) : Stmt;
 
 /// <summary>
 /// The bridge between the two node families: an expression used as a statement,

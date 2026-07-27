@@ -4,20 +4,8 @@ using Own_Lang.Internal.Contracts;
 string codigo = @"def program {
     function empty Main()
     {
-        loop[i: 1...3] { term.out(i); }
-
-        let x = 0;
-        loop when(x < 3) {
-            term.out(""while"");
-            let x = x + 1;
-        }
-
-        let n = 0;
-        loop {
-            when(n == 2) { stop; }
-            term.out(""inf"");
-            let n = n + 1;
-        }
+        string s = ""jorge"";
+        term.out(s + "" tiene "" + 35 + "" anios"");
     }
 }";
 

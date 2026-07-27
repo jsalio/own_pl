@@ -22,7 +22,8 @@ internal sealed class Lexer : ILexer
         ["when"] = TokenType.WHEN,
         ["else"] = TokenType.ELSE,
         ["loop"] = TokenType.LOOP,
-        ["stop"] = TokenType.STOP
+        ["stop"] = TokenType.STOP,
+        ["string"]= TokenType.TYPE_STRING,
     };
 
     private readonly string source;

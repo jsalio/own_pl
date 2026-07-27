@@ -131,7 +131,8 @@ internal sealed class Parser : IParser
     // Statement -> VarDecl | ExpressionStmt
     private Stmt Statement()
     {
-        if (Match(TokenType.LET)) return VarDeclaration();
+        if (Match(TokenType.LET)) return VarDeclaration(null);
+        if (Match(TokenType.TYPE_STRING)) return VarDeclaration("string"); 
         if (Match(TokenType.WHEN)) return WhenStatement();
         if (Match(TokenType.LOOP)) return LoopStatement();
         if (Match(TokenType.STOP)) return StopStatement();
@@ -139,7 +140,7 @@ internal sealed class Parser : IParser
     }
 
     // VarDecl -> "let" IDENTIFIER "=" Expression ";"   ("let" ya consumido)
-    private Stmt VarDeclaration()
+    private Stmt VarDeclaration(string? declareType)
     {
         Token name = Consume(TokenType.IDENTIFIER,
             "se esperaba el nombre de la variable después de 'let'");
@@ -148,7 +149,7 @@ internal sealed class Parser : IParser
         Expr initializer = Expression();
         Consume(TokenType.SEMICOLON,
             "se esperaba ';' al final de la declaración");
-        return new VarDecl(name.Lexeme, initializer);
+        return new VarDecl(declareType, name.Lexeme, initializer);
     }
 
     private Stmt WhenStatement()

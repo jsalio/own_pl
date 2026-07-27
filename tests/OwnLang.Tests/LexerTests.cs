@@ -132,6 +132,14 @@ public class LexerTests
     }
 
     [Test]
+    public void DetectStringTypeKeyword()
+    {
+        // 'string' (el tipo) es TYPE_STRING, distinto de STRING (el literal)
+        Assert.That(TokenTypesOf("string"), Is.EqualTo(new[] { TokenType.TYPE_STRING }));
+        Assert.That(TokenTypesOf("\"hola\""), Is.EqualTo(new[] { TokenType.STRING }));
+    }
+
+    [Test]
     public void DetectVarDeclarationSequence()
     {
         Assert.That(TokenTypesOf("let val1 = 1;"), Is.EqualTo(new[]

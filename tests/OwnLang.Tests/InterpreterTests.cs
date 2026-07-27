@@ -210,6 +210,41 @@ public class InterpreterTests
     }
 
     [Test]
+    public void TypedStringDeclarationStoresValue()
+    {
+        Assert.That(
+            RunMain(@"string s = ""jorge""; term.out(s);"),
+            Is.EqualTo("jorge"));
+    }
+
+    [Test]
+    public void StringConcatenation()
+    {
+        Assert.That(Eval("\"a\" + \"b\""), Is.EqualTo("ab"));
+    }
+
+    [Test]
+    public void NumberIsCoercedToStringOnConcat()
+    {
+        // en cualquier orden: el número se convierte con ToString()
+        Assert.That(Eval("\"n\" + 35"), Is.EqualTo("n35"));
+        Assert.That(Eval("35 + \"n\""), Is.EqualTo("35n"));
+    }
+
+    [Test]
+    public void PlusStaysIntegerWhenNoStringInvolved()
+    {
+        // 1 + 2 sigue siendo suma entera, NO "12"
+        Assert.That(Eval("1 + 2"), Is.EqualTo("3"));
+    }
+
+    [Test]
+    public void TypeMismatchInTypedDeclarationThrows()
+    {
+        Assert.That(() => RunMain("string x = 5;"), Throws.Exception);
+    }
+
+    [Test]
     public void DivisionByZeroThrowsMathError()
     {
         Assert.That(() => Eval("1 / 0"), Throws.TypeOf<MathError>());

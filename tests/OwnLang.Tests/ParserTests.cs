@@ -184,6 +184,23 @@ public class ParserTests
     }
 
     [Test]
+    public void TypedDeclarationCarriesDeclaredType()
+    {
+        var stmt = FirstStatement("string s = \"hi\";");
+
+        Assert.That(stmt, Is.TypeOf<VarDecl>());
+        Assert.That(((VarDecl)stmt).DeclareType, Is.EqualTo("string"));
+    }
+
+    [Test]
+    public void InferredDeclarationHasNullType()
+    {
+        var stmt = FirstStatement("let x = 1;");
+
+        Assert.That(((VarDecl)stmt).DeclareType, Is.Null);
+    }
+
+    [Test]
     public void MissingSemicolonThrows()
     {
         Assert.That(
