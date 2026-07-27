@@ -23,9 +23,11 @@ internal sealed class Lexer : ILexer
         ["else"] = TokenType.ELSE,
         ["loop"] = TokenType.LOOP,
         ["stop"] = TokenType.STOP,
-        ["string"]= TokenType.TYPE_STRING,
-        ["bool"]=TokenType.TYPE_BOOL,
+        ["string"] = TokenType.TYPE_STRING,
+        ["bool"] = TokenType.TYPE_BOOL,
         ["char"] = TokenType.TYPE_CHAR,
+        ["int"] = TokenType.TYPE_INT,
+        ["uint"] = TokenType.TYPE_UINT,
     };
 
     private readonly string source;
@@ -169,7 +171,7 @@ internal sealed class Lexer : ILexer
 
     private void Char()
     {
-        if (IsAtEnd() || Peek() ==CHARDEFINITION)
+        if (IsAtEnd() || Peek() == CHARDEFINITION)
             throw new Exception($"Char empty in line {line}...");
         Advance();
         if (!Match(CHARDEFINITION))

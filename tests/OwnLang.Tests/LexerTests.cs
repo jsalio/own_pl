@@ -154,6 +154,13 @@ public class LexerTests
     }
 
     [Test]
+    public void DetectIntAndUintTypeKeywords()
+    {
+        Assert.That(TokenTypesOf("int"),  Is.EqualTo(new[] { TokenType.TYPE_INT }));
+        Assert.That(TokenTypesOf("uint"), Is.EqualTo(new[] { TokenType.TYPE_UINT }));
+    }
+
+    [Test]
     public void DetectVarDeclarationSequence()
     {
         Assert.That(TokenTypesOf("let val1 = 1;"), Is.EqualTo(new[]

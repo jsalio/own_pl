@@ -3,6 +3,7 @@ using System.IO;
 using NUnit.Framework;
 using Own_Lang.Internal;
 using Own_Lang.Internal.Contracts;
+using Own_Lang.Internal.Error;
 
 namespace OwnLang.Tests;
 
@@ -266,6 +267,44 @@ public class InterpreterTests
     public void CharTypeMismatchThrows()
     {
         Assert.That(() => RunMain("char c = 5;"), Throws.Exception);
+    }
+
+    [Test]
+    public void IntDeclarationStoresValue()
+    {
+        Assert.That(RunMain(@"int a = 5; term.out(a);"), Is.EqualTo("5"));
+    }
+
+    [Test]
+    public void UintCoercesFromIntLiteral()
+    {
+        Assert.That(RunMain(@"uint b = 5; term.out(b);"), Is.EqualTo("5"));
+    }
+
+    [Test]
+    public void MixedUintAndIntArithmeticGivesResult()
+    {
+        // uint + int -> se opera en int
+        Assert.That(RunMain(@"uint b = 5; term.out(b + 1);"), Is.EqualTo("6"));
+    }
+
+    [Test]
+    public void UintArithmetic()
+    {
+        Assert.That(RunMain(@"uint c = 10; uint d = 3; term.out(c - d);"), Is.EqualTo("7"));
+    }
+
+    [Test]
+    public void UintOutOfRangeThrowsOverflow()
+    {
+        // 0 - 1 = -1, no cabe en uint
+        Assert.That(() => RunMain("uint x = 0 - 1;"), Throws.TypeOf<OverflowError>());
+    }
+
+    [Test]
+    public void ArithmeticOverflowThrows()
+    {
+        Assert.That(() => Eval("2000000000 + 2000000000"), Throws.TypeOf<OverflowError>());
     }
 
     [Test]

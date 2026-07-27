@@ -136,6 +136,8 @@ internal sealed class Parser : IParser
         if (Match(TokenType.TYPE_STRING)) return VarDeclaration("string");
         if (Match(TokenType.TYPE_BOOL)) return VarDeclaration("bool");
         if (Match(TokenType.TYPE_CHAR)) return VarDeclaration("char");
+        if (Match(TokenType.TYPE_INT)) return VarDeclaration("int");
+        if (Match(TokenType.TYPE_UINT)) return VarDeclaration("uint");
         if (Match(TokenType.WHEN)) return WhenStatement();
         if (Match(TokenType.LOOP)) return LoopStatement();
         if (Match(TokenType.STOP)) return StopStatement();

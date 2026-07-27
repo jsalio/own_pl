@@ -218,6 +218,13 @@ public class ParserTests
     }
 
     [Test]
+    public void TypedIntAndUintDeclarationsCarryDeclaredType()
+    {
+        Assert.That(((VarDecl)FirstStatement("int a = 5;")).DeclareType, Is.EqualTo("int"));
+        Assert.That(((VarDecl)FirstStatement("uint b = 5;")).DeclareType, Is.EqualTo("uint"));
+    }
+
+    [Test]
     public void InferredDeclarationHasNullType()
     {
         var stmt = FirstStatement("let x = 1;");

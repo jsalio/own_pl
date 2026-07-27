@@ -189,7 +189,7 @@ block          → "{" statement* "}"
 
 statement      → varDecl | whenStmt | loopStmt | stopStmt | exprStmt
 varDecl        → ( "let" | typeName ) IDENT "=" expression ";"
-typeName       → "string" | "bool" | "char"
+typeName       → "string" | "bool" | "char" | "int" | "uint"
 whenStmt       → "when" "(" expression ")" block ( "else" ( whenStmt | block ) )?
 loopStmt       → "loop" ( "[" IDENT ":" expression "..." expression "]"
                         | "when" "(" expression ")" )? block
@@ -218,11 +218,16 @@ primary        → NUMBER | STRING | "true" | "false" | IDENT | "(" expression "
   operators. No logical operators (`&&`, `||`, `!`) yet. `+` concatenates when
   either operand is a string, coercing the other via `ToString()` (`"n" + 35` →
   `"n35"`); otherwise it is integer addition.
-- Values are integers, strings and booleans — no decimals; integer `/` truncates
-  (e.g. `7 / 2` is `3`).
+- Integers are 32-bit `int` (signed) or `uint` (unsigned); no decimals yet.
+  Integer `/` truncates (`7 / 2` is `3`). Arithmetic is **checked**: any overflow
+  — at declaration (`uint x = 0 - 1;`) or in an operation (`2000000000 + 2000000000`)
+  — throws `OverflowError`. Mixing `int` and `uint` in an operation computes in
+  `int` (the `uint` is converted, failing if it exceeds `int` range).
 - Declarations are inferred (`let x = ...`) or typed (`string x = ...`,
-  `bool b = ...`); the type is checked dynamically at runtime (`string x = 5;`
-  fails). Usable type keywords so far: `string`, `bool`, `char`.
+  `bool b = ...`, `uint n = 5;`); the type is checked dynamically at runtime
+  (`string x = 5;` fails). A bare integer literal is `int`; a `uint` value is
+  produced by coercion at a typed declaration. Usable type keywords so far:
+  `string`, `bool`, `char`, `int`, `uint`.
 - Conditionals (`when` / `else` / `else when`) and loops (`loop`, `loop when`,
   `loop[i: 1...3]`, with `stop`) exist. Conditions must be booleans (no
   truthiness coercion). `stop` outside a loop is an unhandled error.
@@ -239,8 +244,9 @@ primary        → NUMBER | STRING | "true" | "false" | IDENT | "(" expression "
 - [x] Conditionals: `when` / `else` / `else when` (`WhenStmt`, bool condition).
 - [x] Loops: `loop` (infinite), `loop when` (while), `loop[i: 1...3]` (counted),
   with `stop` (break via `BreakSignal`).
-- [~] Type system (dynamic): `string`, `bool` and `char` typed declarations done;
-  the numeric family (`int`, `long`, `double`, …) pending.
+- [~] Type system (dynamic): `string`, `bool`, `char`, `int` and `uint` done
+  (checked arithmetic, `int`/`uint` promotion); `long`/`ulong` and the decimal
+  family (`double`, `float`) pending.
 - [ ] Logical operators: `&&`, `||`, `!`.
 - [ ] User-defined function calls + parameters (a chained `Environment` per scope).
 - [ ] Real objects instead of the `term.out` shortcut.

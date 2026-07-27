@@ -59,6 +59,8 @@ public enum TokenType
     COLON,
     /// <summary>Inclusive range operator <c>...</c> (counted-loop bounds).</summary>
     RANGE,
+    /// <summary>A char literal (e.g. <c>'a'</c>).</summary>
+    CHAR,
 
     // Literals and identifiers
     /// <summary>An identifier: a variable or function name (e.g. <c>val1</c>).</summary>
@@ -69,10 +71,17 @@ public enum TokenType
     STRING,
 
     //Data type
+    /// <summary>The <c>string</c> keyword (string type).</summary>
     TYPE_STRING,
+    /// <summary>The <c>bool</c> keyword (boolean type).</summary>
     TYPE_BOOL,
+    /// <summary>The <c>char</c> keyword (char type).</summary>
     TYPE_CHAR,
-    CHAR,
+    /// <summary>The <c>int</c> keyword (int type).</summary>
+    TYPE_INT,
+    /// <summary>The <c>uint</c> keyword (uint type).</summary>
+    TYPE_UINT,
+
 
     //Comparison operators
     /// <summary>Equal operator</summary>

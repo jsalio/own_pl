@@ -4,9 +4,10 @@ using Own_Lang.Internal.Contracts;
 string codigo = @"def program {
     function empty Main()
     {
-        char inicial = 'J';
-        term.out(inicial);
-        term.out(""inicial: "" + inicial);
+        int a = 5;
+        uint b = 5;
+        term.out(a + b);
+        term.out(7 / 2);
     }
 }";
 

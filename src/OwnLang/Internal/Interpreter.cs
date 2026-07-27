@@ -1,3 +1,5 @@
+using Own_Lang.Internal.Error;
+
 namespace Own_Lang.Internal.Contracts;
 
 /// <summary>
@@ -44,7 +46,7 @@ internal sealed class Interpreter : IInterpreter
             case VarDecl d:
                 object? value = Evaluate(d.Initializer);
                 if (d.DeclareType is not null)
-                    CheckType(d.DeclareType, d.Name, value);
+                    value = Coerce(d.DeclareType, d.Name, value);
                 environment.Define(d.Name, value);
                 break;
 
@@ -140,11 +142,35 @@ internal sealed class Interpreter : IInterpreter
         };
     }
 
+    private static object? Coerce(string type, string name, object? value) => type switch
+    {
+        "string" => value is string ? value : throw new TypeError(TypeError.ErrorMessage(name, "string", value?.GetType().Name ?? "null")),
+        "bool" => value is bool ? value : throw new TypeError(TypeError.ErrorMessage(name, "bool", value?.GetType().Name ?? "null")),
+        "char" => value is char ? value : throw new TypeError(TypeError.ErrorMessage(name, "char", value?.GetType().Name ?? "null")),
+        "int" => ToInt(value),
+        "uint" => ToUInt(value),
+        _ => value
+    };
+
     private static bool IsTruthy(object? value)
     {
         if (value is bool b) return b;
         throw new System.Exception("La condición de 'when' debe ser booleana");
     }
+
+    private static int ToInt(object? value) => value switch
+    {
+        int i => i,
+        uint u => u <= int.MaxValue ? (int)u : throw new OverflowError("uint value not cast to int"),
+        _ => throw new MathError("Value " + value + " cannot be cast to int")
+    };
+
+    private static uint ToUInt(object? value) => value switch
+    {
+        uint u => u,
+        int i => i >= 0 ? (uint)i : throw new OverflowError("int value not cast to uint"),
+        _ => throw new MathError("Value " + value + " cannot be cast to uint")
+    };
 
     private object? EvaluateCall(Call call)
     {
@@ -170,50 +196,72 @@ internal sealed class Interpreter : IInterpreter
     private static string Stringify(object? value)
         => value?.ToString() ?? "";
 
+    private static object? NumericInt(TokenType op, int a, int b)
+    {
+        try
+        {
+            return op switch
+            {
+                TokenType.PLUS => checked(a + b),
+                TokenType.MINUS => checked(a - b),
+                TokenType.STAR => checked(a * b),
+                TokenType.SLASH => b == 0 ? throw new MathError("Division by zero detected") : checked(a / b),
+                TokenType.GREATER => a > b,
+                TokenType.GREATER_EQUAL => a >= b,
+                TokenType.LESS => a < b,
+                TokenType.LESS_EQUAL => a <= b,
+                // TokenType.EQUAL_EQUAL => a == b,
+                // TokenType.BANG_EQUAL => a != b,
+                _ => throw new MathError("Invalid operator for int operation: " + op)
+            };
+        }
+        catch (System.OverflowException)
+        {
+            throw new OverflowError($"Overflow detected in int operation : {op} {a} {b}");
+        }
+    }
+
+    private static object? NumericUInt(TokenType op, uint a, uint b)
+    {
+        try
+        {
+            return op switch
+            {
+                TokenType.PLUS => checked(a + b),
+                TokenType.MINUS => checked(a - b),
+                TokenType.STAR => checked(a * b),
+                TokenType.SLASH => b == 0 ? throw new MathError("Division by zero detected") : checked(a / b),
+                TokenType.GREATER => a > b,
+                TokenType.GREATER_EQUAL => a >= b,
+                TokenType.LESS => a < b,
+                TokenType.LESS_EQUAL => a <= b,
+                // TokenType.EQUAL_EQUAL => a == b,
+                // TokenType.BANG_EQUAL => a != b,
+                _ => throw new MathError("Invalid operator for uint operation: " + op)
+            };
+        }
+        catch (System.OverflowException)
+        {
+            throw new OverflowError($"Overflow detected in uint operation : {op} {a} {b}");
+        }
+    }
+
     private object? EvaluateBinary(Binary b)
     {
         object? left = Evaluate(b.Left);
         object? right = Evaluate(b.Right);
 
-        int TryDivide(object? a, object? b)
-        {
-            if (b is int divisor && divisor == 0)
-            {
-                throw new MathError("Division by zero detected");
-            }
-            return (int)a! / (int)b!;
-        }
 
-        object? Add(object? left, object? right)
-        {
-            if (left is string || right is string)
-                return Stringify(left) + Stringify(right);
-            else
-                return (int)left! + (int)right!;
+        if (b.Operator == TokenType.PLUS && (left is string || right is string))
+            return Stringify(left) + Stringify(right);
 
-        }
+        if (b.Operator == TokenType.EQUAL_EQUAL) return left!.Equals(right);
+        if (b.Operator == TokenType.BANG_EQUAL) return !left!.Equals(right);
 
-        bool Less(object? a, object? b) => (int)a! < (int)b!;
-        bool LessOrEqual(object? a, object? b) => (int)a! <= (int)b!;
-        bool Greater(object? a, object? b) => (int)a! > (int)b!;
-        bool GreaterOrEqual(object? a, object? b) => (int)a! >= (int)b!;
-        bool Equals(object? a, object? b) => a!.Equals(b);
+        if (left is uint lu && right is uint ru)
+            return NumericUInt(b.Operator, lu, ru);
 
-        return b.Operator switch
-        {
-            TokenType.PLUS => Add(left, right), //(int)left! + (int)right!,
-            TokenType.MINUS => (int)left! - (int)right!,
-            TokenType.STAR => (int)left! * (int)right!,
-            TokenType.SLASH => TryDivide(left, right),
-            TokenType.EQUAL_EQUAL => Equals(left, right),
-            TokenType.BANG_EQUAL => !Equals(left, right),
-            TokenType.LESS => Less(left, right),
-            TokenType.LESS_EQUAL => LessOrEqual(left, right),
-            TokenType.GREATER => Greater(left, right),
-            TokenType.GREATER_EQUAL => GreaterOrEqual(left, right),
-            _ => throw new System.Exception(
-                     $"Operador no soportado: {b.Operator}")
-        };
+        return NumericInt(b.Operator, ToInt(left), ToInt(right));
     }
 
 
