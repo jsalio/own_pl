@@ -201,6 +201,23 @@ public class ParserTests
     }
 
     [Test]
+    public void TypedCharDeclarationCarriesDeclaredType()
+    {
+        var stmt = FirstStatement("char c = 'x';");
+
+        Assert.That(((VarDecl)stmt).DeclareType, Is.EqualTo("char"));
+    }
+
+    [Test]
+    public void ParsesCharLiteral()
+    {
+        var expr = ParseExpression("'x'");
+
+        Assert.That(expr, Is.TypeOf<CharLiteral>());
+        Assert.That(((CharLiteral)expr).Value, Is.EqualTo('x'));
+    }
+
+    [Test]
     public void InferredDeclarationHasNullType()
     {
         var stmt = FirstStatement("let x = 1;");

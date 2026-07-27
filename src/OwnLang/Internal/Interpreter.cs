@@ -43,7 +43,7 @@ internal sealed class Interpreter : IInterpreter
         {
             case VarDecl d:
                 object? value = Evaluate(d.Initializer);
-                if(d.DeclareType is not null)
+                if (d.DeclareType is not null)
                     CheckType(d.DeclareType, d.Name, value);
                 environment.Define(d.Name, value);
                 break;
@@ -99,7 +99,7 @@ internal sealed class Interpreter : IInterpreter
                 }
                 catch (BreakSignal) { }
                 break;
-                
+
             default:
                 throw new System.Exception(
                     $"Sentencia no soportada: {stmt.GetType().Name}");
@@ -114,11 +114,12 @@ internal sealed class Interpreter : IInterpreter
         {
             "string" => value is string,
             "bool" => value is bool,
+            "char" => value is char,
             _ => true
         };
         if (!ok)
             throw new System.Exception(
-                    $"Error in type : '{name}' is declare as {declareType} but ,"+
+                    $"Error in type : '{name}' is declare as {declareType} but ," +
                     $"received {value?.GetType().Name ?? null}"
                     );
     }
@@ -133,6 +134,7 @@ internal sealed class Interpreter : IInterpreter
             Binary b => EvaluateBinary(b),
             Call c => EvaluateCall(c),
             BooleanLiteral b => b.Value,
+            CharLiteral c => c.Value,
             _ => throw new System.Exception(
                      $"Expresión no soportada: {expr.GetType().Name}")
         };
@@ -165,8 +167,8 @@ internal sealed class Interpreter : IInterpreter
             "Llamada no soportada: por ahora solo existe 'term.out(...)'");
     }
 
-    private static string Stringify(object? value) 
-        => value?.ToString()??"";
+    private static string Stringify(object? value)
+        => value?.ToString() ?? "";
 
     private object? EvaluateBinary(Binary b)
     {
@@ -186,9 +188,9 @@ internal sealed class Interpreter : IInterpreter
         {
             if (left is string || right is string)
                 return Stringify(left) + Stringify(right);
-            else 
-               return (int)left! + (int)right!;
-                    
+            else
+                return (int)left! + (int)right!;
+
         }
 
         bool Less(object? a, object? b) => (int)a! < (int)b!;

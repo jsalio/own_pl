@@ -146,6 +146,14 @@ public class LexerTests
     }
 
     [Test]
+    public void DetectCharTypeKeywordAndLiteral()
+    {
+        // 'char' es el tipo (TYPE_CHAR); 'a' es el literal (CHAR)
+        Assert.That(TokenTypesOf("char"), Is.EqualTo(new[] { TokenType.TYPE_CHAR }));
+        Assert.That(TokenTypesOf("'a'"), Is.EqualTo(new[] { TokenType.CHAR }));
+    }
+
+    [Test]
     public void DetectVarDeclarationSequence()
     {
         Assert.That(TokenTypesOf("let val1 = 1;"), Is.EqualTo(new[]

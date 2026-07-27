@@ -38,6 +38,7 @@ internal sealed class Parser : IParser
             { TokenType.LPAREN,     BuildParenToken },
             { TokenType.TRUE,       BuildBooleanToken },
             { TokenType.FALSE,      BuildBooleanToken },
+            { TokenType.CHAR, BuildCharToken },
         };
 
         primaryStartTokens = primaryBuilders.Keys.ToArray();
@@ -132,8 +133,9 @@ internal sealed class Parser : IParser
     private Stmt Statement()
     {
         if (Match(TokenType.LET)) return VarDeclaration(null);
-        if (Match(TokenType.TYPE_STRING)) return VarDeclaration("string"); 
+        if (Match(TokenType.TYPE_STRING)) return VarDeclaration("string");
         if (Match(TokenType.TYPE_BOOL)) return VarDeclaration("bool");
+        if (Match(TokenType.TYPE_CHAR)) return VarDeclaration("char");
         if (Match(TokenType.WHEN)) return WhenStatement();
         if (Match(TokenType.LOOP)) return LoopStatement();
         if (Match(TokenType.STOP)) return StopStatement();
@@ -155,17 +157,17 @@ internal sealed class Parser : IParser
 
     private Stmt WhenStatement()
     {
-      Consume(TokenType.LPAREN, "se esperaba '(' despues de 'when'");
-      Expr condition = Expression();
-      Consume(TokenType.RPAREN, "se esperaba ')' despues de la condicion");
-      Block thenCodeBlock = Block();
-      Stmt? elseCodeBlock = null;
-      if (Match(TokenType.ELSE))
-      {
-        //else when(...) -> recursion; else {...} -> bloque
-        elseCodeBlock = Match(TokenType.WHEN) ? WhenStatement() : Block();
-      }
-      return new WhenStmt(condition, thenCodeBlock, elseCodeBlock);
+        Consume(TokenType.LPAREN, "se esperaba '(' despues de 'when'");
+        Expr condition = Expression();
+        Consume(TokenType.RPAREN, "se esperaba ')' despues de la condicion");
+        Block thenCodeBlock = Block();
+        Stmt? elseCodeBlock = null;
+        if (Match(TokenType.ELSE))
+        {
+            //else when(...) -> recursion; else {...} -> bloque
+            elseCodeBlock = Match(TokenType.WHEN) ? WhenStatement() : Block();
+        }
+        return new WhenStmt(condition, thenCodeBlock, elseCodeBlock);
     }
 
     // loopStmt -> "loop" ( "[" IDENT ":" expr "..." expr "]" | "when" "(" expr ")" )? block
@@ -384,6 +386,12 @@ internal sealed class Parser : IParser
     {
         bool value = Previous().Type == TokenType.TRUE;
         return new BooleanLiteral(value);
+    }
+
+    private Expr BuildCharToken()
+    {
+        string raw = Previous().Lexeme;
+        return new CharLiteral(raw[1]);
     }
 
     // ---- Helpers: navegación sobre los tokens ----

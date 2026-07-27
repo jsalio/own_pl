@@ -4,10 +4,9 @@ using Own_Lang.Internal.Contracts;
 string codigo = @"def program {
     function empty Main()
     {
-        bool activo = true;
-        term.out(activo);
-        bool comparado = 3 < 5;
-        term.out(comparado);
+        char inicial = 'J';
+        term.out(inicial);
+        term.out(""inicial: "" + inicial);
     }
 }";
 

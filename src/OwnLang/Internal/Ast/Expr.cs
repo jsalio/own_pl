@@ -59,3 +59,5 @@ public record MemberAccess(Expr Object, string Member) : Expr;
 /// <param name="Callee">The expression being invoked.</param>
 /// <param name="Arguments">The argument expressions, in order (may be empty).</param>
 public record Call(Expr Callee, IReadOnlyList<Expr> Arguments) : Expr;
+
+public record CharLiteral(char Value) : Expr;

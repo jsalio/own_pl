@@ -257,6 +257,18 @@ public class InterpreterTests
     }
 
     [Test]
+    public void TypedCharDeclarationStoresValue()
+    {
+        Assert.That(RunMain(@"char c = 'J'; term.out(c);"), Is.EqualTo("J"));
+    }
+
+    [Test]
+    public void CharTypeMismatchThrows()
+    {
+        Assert.That(() => RunMain("char c = 5;"), Throws.Exception);
+    }
+
+    [Test]
     public void DivisionByZeroThrowsMathError()
     {
         Assert.That(() => Eval("1 / 0"), Throws.TypeOf<MathError>());

@@ -24,7 +24,8 @@ internal sealed class Lexer : ILexer
         ["loop"] = TokenType.LOOP,
         ["stop"] = TokenType.STOP,
         ["string"]= TokenType.TYPE_STRING,
-        ["bool"]=TokenType.TYPE_BOOL
+        ["bool"]=TokenType.TYPE_BOOL,
+        ["char"] = TokenType.TYPE_CHAR,
     };
 
     private readonly string source;
@@ -34,6 +35,8 @@ internal sealed class Lexer : ILexer
     private int current = 0;
     private int line = 1;
     private int column = 1;
+
+    private const char CHARDEFINITION = '\'';
 
     /// <summary>Creates a lexer over the given source text.</summary>
     /// <param name="source">The full source code to tokenize.</param>
@@ -109,6 +112,10 @@ internal sealed class Lexer : ILexer
                 column = 1;
                 break;
 
+            case CHARDEFINITION:
+                Char();
+                break;
+
             default:
                 if (char.IsDigit(c))
                 {
@@ -158,6 +165,16 @@ internal sealed class Lexer : ILexer
         Advance(); // consume la comilla de cierre "
 
         AddToken(TokenType.STRING);
+    }
+
+    private void Char()
+    {
+        if (IsAtEnd() || Peek() ==CHARDEFINITION)
+            throw new Exception($"Char empty in line {line}...");
+        Advance();
+        if (!Match(CHARDEFINITION))
+            throw new Exception($"Wait \"'\" for close...");
+        AddToken(TokenType.CHAR);
     }
 
     private void Identifier()
