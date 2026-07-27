@@ -113,6 +113,7 @@ internal sealed class Interpreter : IInterpreter
         bool ok = declareType switch
         {
             "string" => value is string,
+            "bool" => value is bool,
             _ => true
         };
         if (!ok)

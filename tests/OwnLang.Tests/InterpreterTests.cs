@@ -245,6 +245,18 @@ public class InterpreterTests
     }
 
     [Test]
+    public void TypedBoolDeclarationStoresValue()
+    {
+        Assert.That(RunMain(@"bool b = 3 < 5; term.out(b);"), Is.EqualTo("True"));
+    }
+
+    [Test]
+    public void BoolTypeMismatchThrows()
+    {
+        Assert.That(() => RunMain("bool b = 5;"), Throws.Exception);
+    }
+
+    [Test]
     public void DivisionByZeroThrowsMathError()
     {
         Assert.That(() => Eval("1 / 0"), Throws.TypeOf<MathError>());

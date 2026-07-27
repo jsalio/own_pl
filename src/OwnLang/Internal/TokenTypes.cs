@@ -71,6 +71,7 @@ public enum TokenType
     //Data type
     TYPE_STRING,
     TYPE_BOOL,
+    TYPE_CHAR,
 
     //Comparison operators
     /// <summary>Equal operator</summary>

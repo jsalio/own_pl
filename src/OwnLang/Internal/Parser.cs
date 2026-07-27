@@ -133,6 +133,7 @@ internal sealed class Parser : IParser
     {
         if (Match(TokenType.LET)) return VarDeclaration(null);
         if (Match(TokenType.TYPE_STRING)) return VarDeclaration("string"); 
+        if (Match(TokenType.TYPE_BOOL)) return VarDeclaration("bool");
         if (Match(TokenType.WHEN)) return WhenStatement();
         if (Match(TokenType.LOOP)) return LoopStatement();
         if (Match(TokenType.STOP)) return StopStatement();

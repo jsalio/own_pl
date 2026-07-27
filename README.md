@@ -188,7 +188,7 @@ block          → "{" statement* "}"
 
 statement      → varDecl | whenStmt | loopStmt | stopStmt | exprStmt
 varDecl        → ( "let" | typeName ) IDENT "=" expression ";"
-typeName       → "string"
+typeName       → "string" | "bool"
 whenStmt       → "when" "(" expression ")" block ( "else" ( whenStmt | block ) )?
 loopStmt       → "loop" ( "[" IDENT ":" expression "..." expression "]"
                         | "when" "(" expression ")" )? block
@@ -219,9 +219,9 @@ primary        → NUMBER | STRING | "true" | "false" | IDENT | "(" expression "
   `"n35"`); otherwise it is integer addition.
 - Values are integers, strings and booleans — no decimals; integer `/` truncates
   (e.g. `7 / 2` is `3`).
-- Declarations are inferred (`let x = ...`) or typed (`string x = ...`); the type
-  is checked dynamically at runtime (`string x = 5;` fails). Only `string` is a
-  usable type keyword so far.
+- Declarations are inferred (`let x = ...`) or typed (`string x = ...`,
+  `bool b = ...`); the type is checked dynamically at runtime (`string x = 5;`
+  fails). Usable type keywords so far: `string`, `bool`.
 - Conditionals (`when` / `else` / `else when`) and loops (`loop`, `loop when`,
   `loop[i: 1...3]`, with `stop`) exist. Conditions must be booleans (no
   truthiness coercion). `stop` outside a loop is an unhandled error.
@@ -238,7 +238,7 @@ primary        → NUMBER | STRING | "true" | "false" | IDENT | "(" expression "
 - [x] Conditionals: `when` / `else` / `else when` (`WhenStmt`, bool condition).
 - [x] Loops: `loop` (infinite), `loop when` (while), `loop[i: 1...3]` (counted),
   with `stop` (break via `BreakSignal`).
-- [~] Type system (dynamic): `string` typed declarations done; `bool`, `char`
+- [~] Type system (dynamic): `string` and `bool` typed declarations done; `char`
   and the numeric family (`int`, `long`, `double`, …) pending.
 - [ ] Logical operators: `&&`, `||`, `!`.
 - [ ] User-defined function calls + parameters (a chained `Environment` per scope).

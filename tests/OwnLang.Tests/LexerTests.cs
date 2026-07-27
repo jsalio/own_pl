@@ -140,6 +140,12 @@ public class LexerTests
     }
 
     [Test]
+    public void DetectBoolTypeKeyword()
+    {
+        Assert.That(TokenTypesOf("bool"), Is.EqualTo(new[] { TokenType.TYPE_BOOL }));
+    }
+
+    [Test]
     public void DetectVarDeclarationSequence()
     {
         Assert.That(TokenTypesOf("let val1 = 1;"), Is.EqualTo(new[]

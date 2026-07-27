@@ -193,6 +193,14 @@ public class ParserTests
     }
 
     [Test]
+    public void TypedBoolDeclarationCarriesDeclaredType()
+    {
+        var stmt = FirstStatement("bool b = true;");
+
+        Assert.That(((VarDecl)stmt).DeclareType, Is.EqualTo("bool"));
+    }
+
+    [Test]
     public void InferredDeclarationHasNullType()
     {
         var stmt = FirstStatement("let x = 1;");

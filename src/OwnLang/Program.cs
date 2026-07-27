@@ -4,8 +4,10 @@ using Own_Lang.Internal.Contracts;
 string codigo = @"def program {
     function empty Main()
     {
-        string s = ""jorge"";
-        term.out(s + "" tiene "" + 35 + "" anios"");
+        bool activo = true;
+        term.out(activo);
+        bool comparado = 3 < 5;
+        term.out(comparado);
     }
 }";
 
