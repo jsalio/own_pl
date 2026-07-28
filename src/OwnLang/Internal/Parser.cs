@@ -14,6 +14,8 @@ namespace Own_Lang.Internal;
 /// </summary>
 internal sealed class Parser : IParser
 {
+    #region State
+
     private readonly IReadOnlyList<Token> tokens;
     private int current = 0;
 
@@ -24,6 +26,10 @@ internal sealed class Parser : IParser
     // Tokens que pueden iniciar una expresión primaria. Se deriva del diccionario
     // para que exista una sola fuente de verdad (evita listas desincronizadas).
     private readonly TokenType[] primaryStartTokens;
+
+    #endregion
+
+    #region Public API
 
     /// <summary>Creates a parser over a token stream (as produced by the lexer).</summary>
     /// <param name="tokens">The tokens to parse; must end with an <c>EOF</c> token.</param>
@@ -45,8 +51,6 @@ internal sealed class Parser : IParser
         primaryStartTokens = primaryBuilders.Keys.ToArray();
     }
 
-    // ---- Punto de entrada (contrato de IParser) ----
-
     /// <inheritdoc/>
     public ProgramDecl Parse()
     {
@@ -65,7 +69,9 @@ internal sealed class Parser : IParser
         return program;
     }
 
-    // ---- Gramática: declaraciones de alto nivel ----
+    #endregion
+
+    #region Grammar: declarations
 
     // Program -> "def" IDENTIFIER "{" Declaration* "}"
     private ProgramDecl Program()
@@ -128,7 +134,9 @@ internal sealed class Parser : IParser
         return type.Lexeme;
     }
 
-    // ---- Gramática: sentencias ----
+    #endregion
+
+    #region Grammar: statements
 
     // Statement -> VarDecl | ExpressionStmt
     private Stmt Statement()
@@ -241,29 +249,12 @@ internal sealed class Parser : IParser
         return new Block(statements);
     }
 
-    // ---- Gramática: expresiones ----
+    #endregion
+
+    #region Grammar: expressions (en orden de precedencia)
 
     // Expression -> Equality
     private Expr Expression() => Equality();
-
-    // Additive -> Call ( ("+" | "-") Call )*
-    // '+' y '-' comparten nivel de precedencia y asociatividad izquierda,
-    // por eso van en el MISMO método (un método por nivel, no por operador).
-    // El mismo bucle empareja ambos, permitiendo mezclas como 10 - 2 + 3.
-    private Expr Additive()
-    {
-
-        Expr expr = Multiplicative();
-
-        while (Match(TokenType.PLUS, TokenType.MINUS))
-        {
-            TokenType op = Previous().Type;
-            Expr right = Multiplicative();
-            expr = new Binary(expr, op, right);
-        }
-
-        return expr;
-    }
 
     private Expr Equality()
     {
@@ -288,6 +279,25 @@ internal sealed class Parser : IParser
         {
             TokenType op = Previous().Type;
             Expr right = Additive();
+            expr = new Binary(expr, op, right);
+        }
+
+        return expr;
+    }
+
+    // Additive -> Multiplicative ( ("+" | "-") Multiplicative )*
+    // '+' y '-' comparten nivel de precedencia y asociatividad izquierda,
+    // por eso van en el MISMO método (un método por nivel, no por operador).
+    // El mismo bucle empareja ambos, permitiendo mezclas como 10 - 2 + 3.
+    private Expr Additive()
+    {
+
+        Expr expr = Multiplicative();
+
+        while (Match(TokenType.PLUS, TokenType.MINUS))
+        {
+            TokenType op = Previous().Type;
+            Expr right = Multiplicative();
             expr = new Binary(expr, op, right);
         }
 
@@ -366,6 +376,10 @@ internal sealed class Parser : IParser
             $"'{token.Lexeme}' ({token.Type}) en la línea {token.Line}, columna {token.Column}");
     }
 
+    #endregion
+
+    #region Primary builders (token -> Expr)
+
     private Expr BuildNumericToken()
     {
         string lexeme = Previous().Lexeme;
@@ -419,7 +433,9 @@ internal sealed class Parser : IParser
         return new CharLiteral(raw[1]);
     }
 
-    // ---- Helpers: navegación sobre los tokens ----
+    #endregion
+
+    #region Token navigation helpers
 
     // Mira el token actual sin consumirlo.
     private Token Peek() => tokens[current];
@@ -468,4 +484,6 @@ internal sealed class Parser : IParser
             $"Error de sintaxis: {message}. Se encontró '{token.Lexeme}' " +
             $"({token.Type}) en la línea {token.Line}, columna {token.Column}");
     }
+
+    #endregion
 }

@@ -8,7 +8,8 @@ namespace Own_Lang.Internal;
 /// </summary>
 public enum TokenType
 {
-    // Keywords
+    #region Keywords
+
     /// <summary>The <c>def</c> keyword (program declaration).</summary>
     DEF,
     /// <summary>The <c>function</c> keyword (function declaration).</summary>
@@ -26,7 +27,10 @@ public enum TokenType
     /// <summary>The <c>stop</c> keyword (break out of the innermost loop).</summary>
     STOP,
 
-    // Symbols
+    #endregion
+
+    #region Symbols
+
     /// <summary>Left brace <c>{</c>.</summary>
     LBRACE,
     /// <summary>Right brace <c>}</c>.</summary>
@@ -62,7 +66,10 @@ public enum TokenType
     /// <summary>A char literal (e.g. <c>'a'</c>).</summary>
     CHAR,
 
-    // Literals and identifiers
+    #endregion
+
+    #region Literals and identifiers
+
     /// <summary>An identifier: a variable or function name (e.g. <c>val1</c>).</summary>
     IDENTIFIER,
     /// <summary>An integer literal (e.g. <c>123</c>).</summary>
@@ -70,7 +77,10 @@ public enum TokenType
     /// <summary>A string literal, including its surrounding quotes in the lexeme.</summary>
     STRING,
 
-    //Data type
+    #endregion
+
+    #region Data types
+
     /// <summary>The <c>string</c> keyword (string type).</summary>
     TYPE_STRING,
     /// <summary>The <c>bool</c> keyword (boolean type).</summary>
@@ -90,8 +100,10 @@ public enum TokenType
     /// <summary>The <c>float</c> keyword (32-bit IEEE 754 type).</summary>
     TYPE_FLOAT,
 
+    #endregion
 
-    //Comparison operators
+    #region Comparison operators
+
     /// <summary>Equal operator</summary>
     EQUAL_EQUAL,
     /// <summary>Less than operator</summary>
@@ -107,14 +119,21 @@ public enum TokenType
     /// <summary>Not operator</summary>
     BANG,
 
-    // Booleans
+    #endregion
+
+    #region Booleans
+
     /// <summary>Boolean true value</summary>
     TRUE,
     /// <summary>Boolean false value</summary>
     FALSE,
 
-    // Control
+    #endregion
+
+    #region Control
+
     /// <summary>End-of-input marker; the last token in every stream.</summary>
     EOF,
 
+    #endregion
 }

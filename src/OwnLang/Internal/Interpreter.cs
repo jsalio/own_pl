@@ -12,9 +12,13 @@ namespace Own_Lang.Internal.Contracts;
 /// </summary>
 internal sealed class Interpreter : IInterpreter
 {
+    #region State
+
     private readonly Environment environment = new();
 
-    // ---- Punto de entrada (contrato de IInterpreter) ----
+    #endregion
+
+    #region Entry point
 
     /// <inheritdoc/>
     public void Interpret(ProgramDecl program)
@@ -38,7 +42,9 @@ internal sealed class Interpreter : IInterpreter
         Execute(main.Body);
     }
 
-    // ---- Ejecución de sentencias (hacen acciones, no devuelven valor) ----
+    #endregion
+
+    #region Statement execution (acciones, no devuelven valor)
 
     private void Execute(Stmt stmt)
     {
@@ -109,23 +115,9 @@ internal sealed class Interpreter : IInterpreter
         }
     }
 
-    // ---- Evaluación de expresiones (producen un valor) ----
+    #endregion
 
-    private static void CheckType(string declareType, string name, object? value)
-    {
-        bool ok = declareType switch
-        {
-            "string" => value is string,
-            "bool" => value is bool,
-            "char" => value is char,
-            _ => true
-        };
-        if (!ok)
-            throw new System.Exception(
-                    $"Error in type : '{name}' is declare as {declareType} but ," +
-                    $"received {value?.GetType().Name ?? null}"
-                    );
-    }
+    #region Expression evaluation (producen un valor)
 
     private object? Evaluate(Expr expr)
     {
@@ -143,91 +135,36 @@ internal sealed class Interpreter : IInterpreter
         };
     }
 
-    private static object? Coerce(string type, string name, object? value) => type switch
+    private object? EvaluateBinary(Binary b)
     {
-        "string" => value is string ? value : throw new TypeError(TypeError.ErrorMessage(name, "string", value?.GetType().Name ?? "null")),
-        "bool" => value is bool ? value : throw new TypeError(TypeError.ErrorMessage(name, "bool", value?.GetType().Name ?? "null")),
-        "char" => value is char ? value : throw new TypeError(TypeError.ErrorMessage(name, "char", value?.GetType().Name ?? "null")),
-        "int" => ToInt(value),
-        "uint" => ToUInt(value),
-        "long" => ToLong(value),
-        "ulong" => ToULong(value),
-        "double" => ToDouble(value),
-        "float" => ToFloat(value),
-        _ => value
-    };
+        object? left = Evaluate(b.Left);
+        object? right = Evaluate(b.Right);
 
-    private static bool IsTruthy(object? value)
-    {
-        if (value is bool b) return b;
-        throw new System.Exception("La condición de 'when' debe ser booleana");
+        int width = System.Math.Max(Width(left), Width(right));
+        bool signed = Signed(left) || Signed(right);
+
+        if (b.Operator == TokenType.PLUS && (left is string || right is string))
+            return Stringify(left) + Stringify(right);
+
+        if (b.Operator == TokenType.EQUAL_EQUAL) return left!.Equals(right);
+        if (b.Operator == TokenType.BANG_EQUAL) return !left!.Equals(right);
+
+        // Capa flotante: si algún operando es decimal, la operación es decimal.
+        // double gana a float; los enteros se promueven al flotante.
+        if (left is double || right is double)
+            return NumericDouble(b.Operator, ToDouble(left), ToDouble(right));
+        if (left is float || right is float)
+            return NumericFloat(b.Operator, ToFloat(left), ToFloat(right));
+
+        // Enteros: promoción por ancho máximo, gana signed.
+        return (width, signed) switch
+        {
+            (32, true) => NumericInt(b.Operator, ToInt(left), ToInt(right)),
+            (32, false) => NumericUInt(b.Operator, ToUInt(left), ToUInt(right)),
+            (64, true) => NumericLong(b.Operator, ToLong(left), ToLong(right)),
+            _ => NumericUlong(b.Operator, ToULong(left), ToULong(right))
+        };
     }
-
-    private static int ToInt(object? value)
-    {
-        long number = AsLong(value);
-        if (number > int.MaxValue || number > int.MaxValue)
-            throw new OverflowError("don't use int space");
-        return (int)number;
-    }
-
-    private static uint ToUInt(object? value)
-    {
-        long number = AsLong(value);
-        if (number < 0 || number > uint.MaxValue)
-            throw new OverflowError("");
-        return (uint)number;
-    }
-
-    private static long ToLong(object? value) => value switch
-    {
-        int i => i,
-        uint u => u,
-        long l => l,
-        ulong ul => ul <= long.MaxValue ? (long)ul : throw new OverflowError("can't insert ulong into long"),
-        _ => throw new MathError($"Invalid number {value}")
-    };
-
-    private static ulong ToULong(object? value) => value switch
-    {
-        int i => i >= 0 ? (ulong)i : throw new OverflowError("negative value is not ulong"),
-        long l => l >= 0 ? (ulong)l : throw new OverflowError("negative valur is not ulong"),
-        uint u => u,
-        ulong ul => ul,
-        _ => throw new MathError($"Invalid number {value}")
-    };
-
-    private static double ToDouble(object? value) => value switch
-    {
-        int i => i,
-        uint u => u,
-        long l => l,
-        ulong ul => ul,
-        double d => d,
-        float f => f,
-        _ => throw new MathError($"Invalid number {value}")
-    };
-
-    private static float ToFloat(object? value) => value switch
-    {
-        int i => i,
-        uint u => u,
-        long l => l,
-        ulong ul => ul,
-        float f => f,
-        double d => (float)d,   // narrowing double->float (esperado)
-        _ => throw new MathError($"Invalid number {value}")
-    };
-
-    private static long AsLong(object? value) => value switch
-    {
-        int i => i,
-        uint u => u,
-        long l => l,
-        ulong ul => ul <= long.MaxValue ? (long)ul : throw new OverflowError("ulong don't ose same space that long"),
-        double or float => throw new OverflowError("no se puede asignar un decimal a un tipo entero"),
-        _ => throw new MathError($"Invalid number {value}")
-    };
 
     private object? EvaluateCall(Call call)
     {
@@ -250,15 +187,9 @@ internal sealed class Interpreter : IInterpreter
             "Llamada no soportada: por ahora solo existe 'term.out(...)'");
     }
 
-    // Formatea decimales con InvariantCulture para que la salida use '.' (igual
-    // que la sintaxis de entrada) sin depender del locale del sistema.
-    private static string Stringify(object? value) => value switch
-    {
-        null => "",
-        double d => d.ToString(CultureInfo.InvariantCulture),
-        float f => f.ToString(CultureInfo.InvariantCulture),
-        _ => value.ToString() ?? ""
-    };
+    #endregion
+
+    #region Numeric operations (aritmética por tipo + clasificación)
 
     private static object? NumericInt(TokenType op, int a, int b)
     {
@@ -388,40 +319,115 @@ internal sealed class Interpreter : IInterpreter
         _ => throw new MathError("Invalid operator for float operation: " + op)
     };
 
-    private object? EvaluateBinary(Binary b)
-    {
-        object? left = Evaluate(b.Left);
-        object? right = Evaluate(b.Right);
-
-        int width = System.Math.Max(Width(left), Width(right));
-        bool signed = Signed(left) || Signed(right);
-
-        if (b.Operator == TokenType.PLUS && (left is string || right is string))
-            return Stringify(left) + Stringify(right);
-
-        if (b.Operator == TokenType.EQUAL_EQUAL) return left!.Equals(right);
-        if (b.Operator == TokenType.BANG_EQUAL) return !left!.Equals(right);
-
-        // Capa flotante: si algún operando es decimal, la operación es decimal.
-        // double gana a float; los enteros se promueven al flotante.
-        if (left is double || right is double)
-            return NumericDouble(b.Operator, ToDouble(left), ToDouble(right));
-        if (left is float || right is float)
-            return NumericFloat(b.Operator, ToFloat(left), ToFloat(right));
-
-        // Enteros: promoción por ancho máximo, gana signed.
-        return (width, signed) switch
-        {
-            (32, true) => NumericInt(b.Operator, ToInt(left), ToInt(right)),
-            (32, false) => NumericUInt(b.Operator, ToUInt(left), ToUInt(right)),
-            (64, true) => NumericLong(b.Operator, ToLong(left), ToLong(right)),
-            _ => NumericUlong(b.Operator, ToULong(left), ToULong(right))
-        };
-    }
-
     private static int Width(object? v)
         => v is long || v is ulong ? 64 : 32;
 
     private static bool Signed(object? v)
         => v is int || v is long;
+
+    #endregion
+
+    #region Type coercion & conversion
+
+    private static object? Coerce(string type, string name, object? value) => type switch
+    {
+        "string" => value is string ? value : throw new TypeError(TypeError.ErrorMessage(name, "string", value?.GetType().Name ?? "null")),
+        "bool" => value is bool ? value : throw new TypeError(TypeError.ErrorMessage(name, "bool", value?.GetType().Name ?? "null")),
+        "char" => value is char ? value : throw new TypeError(TypeError.ErrorMessage(name, "char", value?.GetType().Name ?? "null")),
+        "int" => ToInt(value),
+        "uint" => ToUInt(value),
+        "long" => ToLong(value),
+        "ulong" => ToULong(value),
+        "double" => ToDouble(value),
+        "float" => ToFloat(value),
+        _ => value
+    };
+
+    private static int ToInt(object? value)
+    {
+        long number = AsLong(value);
+        if (number < int.MinValue || number > int.MaxValue)
+            throw new OverflowError($"value {number} does not fit in int");
+        return (int)number;
+    }
+
+    private static uint ToUInt(object? value)
+    {
+        long number = AsLong(value);
+        if (number < 0 || number > uint.MaxValue)
+            throw new OverflowError($"value {number} does not fit in uint");
+        return (uint)number;
+    }
+
+    private static long ToLong(object? value) => value switch
+    {
+        int i => i,
+        uint u => u,
+        long l => l,
+        ulong ul => ul <= long.MaxValue ? (long)ul : throw new OverflowError("can't insert ulong into long"),
+        _ => throw new MathError($"Invalid number {value}")
+    };
+
+    private static ulong ToULong(object? value) => value switch
+    {
+        int i => i >= 0 ? (ulong)i : throw new OverflowError("negative value is not ulong"),
+        long l => l >= 0 ? (ulong)l : throw new OverflowError("negative valur is not ulong"),
+        uint u => u,
+        ulong ul => ul,
+        _ => throw new MathError($"Invalid number {value}")
+    };
+
+    private static double ToDouble(object? value) => value switch
+    {
+        int i => i,
+        uint u => u,
+        long l => l,
+        ulong ul => ul,
+        double d => d,
+        float f => f,
+        _ => throw new MathError($"Invalid number {value}")
+    };
+
+    private static float ToFloat(object? value) => value switch
+    {
+        int i => i,
+        uint u => u,
+        long l => l,
+        ulong ul => ul,
+        float f => f,
+        double d => (float)d,   // narrowing double->float (esperado)
+        _ => throw new MathError($"Invalid number {value}")
+    };
+
+    private static long AsLong(object? value) => value switch
+    {
+        int i => i,
+        uint u => u,
+        long l => l,
+        ulong ul => ul <= long.MaxValue ? (long)ul : throw new OverflowError("ulong don't ose same space that long"),
+        double or float => throw new OverflowError("no se puede asignar un decimal a un tipo entero"),
+        _ => throw new MathError($"Invalid number {value}")
+    };
+
+    #endregion
+
+    #region Runtime helpers
+
+    private static bool IsTruthy(object? value)
+    {
+        if (value is bool b) return b;
+        throw new System.Exception("La condición de 'when' debe ser booleana");
+    }
+
+    // Formatea decimales con InvariantCulture para que la salida use '.' (igual
+    // que la sintaxis de entrada) sin depender del locale del sistema.
+    private static string Stringify(object? value) => value switch
+    {
+        null => "",
+        double d => d.ToString(CultureInfo.InvariantCulture),
+        float f => f.ToString(CultureInfo.InvariantCulture),
+        _ => value.ToString() ?? ""
+    };
+
+    #endregion
 }

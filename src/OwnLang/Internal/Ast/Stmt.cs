@@ -9,13 +9,41 @@ namespace Own_Lang.Internal;
 /// </summary>
 public abstract record Stmt;
 
+#region Declarations
+
+/// <summary>
+/// The root of the AST: a program, e.g. <c>def program { ... }</c>. Holds the
+/// top-level declarations (currently functions).
+/// </summary>
+/// <param name="Name">The program's name.</param>
+/// <param name="Declarations">The top-level declarations inside the program.</param>
+public record ProgramDecl(string Name, IReadOnlyList<Stmt> Declarations) : Stmt;
+
+/// <summary>
+/// A function declaration, e.g. <c>function empty Main() { ... }</c>.
+/// </summary>
+/// <param name="ReturnType">The declared return type (e.g. <c>empty</c>).</param>
+/// <param name="Name">The function's name (e.g. <c>Main</c>).</param>
+/// <param name="Parameters">The parameter names, in order (may be empty).</param>
+/// <param name="Body">The function body.</param>
+public record FunctionDecl(
+    string ReturnType,
+    string Name,
+    IReadOnlyList<string> Parameters,
+    Block Body) : Stmt;
+
 /// <summary>
 /// A variable declaration, e.g. <c>let val1 = 1;</c>. Evaluating the initializer
 /// and binding the result to the name is what creates the variable.
 /// </summary>
+/// <param name="DeclareType">Declared type name, or null when inferred (<c>let</c>).</param>
 /// <param name="Name">The variable's identifier.</param>
 /// <param name="Initializer">The expression whose value initializes the variable.</param>
-public record VarDecl(string? DeclareType ,string Name, Expr Initializer) : Stmt;
+public record VarDecl(string? DeclareType, string Name, Expr Initializer) : Stmt;
+
+#endregion
+
+#region Simple statements
 
 /// <summary>
 /// The bridge between the two node families: an expression used as a statement,
@@ -32,26 +60,10 @@ public record ExpressionStmt(Expr Expression) : Stmt;
 /// <param name="Statements">The statements the block contains, in source order.</param>
 public record Block(IReadOnlyList<Stmt> Statements) : Stmt;
 
-/// <summary>
-/// A function declaration, e.g. <c>function empty Main() { ... }</c>.
-/// </summary>
-/// <param name="ReturnType">The declared return type (e.g. <c>empty</c>).</param>
-/// <param name="Name">The function's name (e.g. <c>Main</c>).</param>
-/// <param name="Parameters">The parameter names, in order (may be empty).</param>
-/// <param name="Body">The function body.</param>
-public record FunctionDecl(
-    string ReturnType,
-    string Name,
-    IReadOnlyList<string> Parameters,
-    Block Body) : Stmt;
+#endregion
 
-/// <summary>
-/// The root of the AST: a program, e.g. <c>def program { ... }</c>. Holds the
-/// top-level declarations (currently functions).
-/// </summary>
-/// <param name="Name">The program's name.</param>
-/// <param name="Declarations">The top-level declarations inside the program.</param>
-public record ProgramDecl(string Name, IReadOnlyList<Stmt> Declarations) : Stmt;
+#region Control flow
+
 /// <summary>
 /// A conditional: <c>when(Condition) Then</c>, with an optional else branch.
 /// </summary>
@@ -82,3 +94,5 @@ public record RangeLoopStmt(string Variable, Expr From, Expr To, Block Body) : S
 
 /// <summary>Breaks out of the innermost enclosing loop: <c>stop;</c>.</summary>
 public record StopStmt : Stmt;
+
+#endregion

@@ -9,6 +9,8 @@ namespace Own_Lang.Internal;
 /// </summary>
 public abstract record Expr;
 
+#region Literals
+
 /// <summary>An integer literal, e.g. <c>1</c>, <c>123</c>.</summary>
 /// <param name="Value">The parsed integer value.</param>
 public record NumberLiteral(object Value) : Expr;
@@ -21,6 +23,14 @@ public record StringLiteral(string Value) : Expr;
 /// <param name="Value">The parsed boolean value.</param>
 public record BooleanLiteral(bool Value) : Expr;
 
+/// <summary>A character literal, e.g. <c>'a'</c>.</summary>
+/// <param name="Value">The single character.</param>
+public record CharLiteral(char Value) : Expr;
+
+#endregion
+
+#region References
+
 /// <summary>
 /// A reference to a named variable, e.g. <c>val1</c>. Resolved against the
 /// interpreter's <c>Environment</c> at evaluation time.
@@ -28,12 +38,9 @@ public record BooleanLiteral(bool Value) : Expr;
 /// <param name="Name">The variable's identifier.</param>
 public record Variable(string Name) : Expr;
 
-/// <summary>
-/// A unary operation, e.g. <c>-x</c>, <c>!true</c>.
-/// </summary>
-/// <param name="Operator">The operator token type (e.g. <c>MINUS</c>, <c>BANG</c>).</param>
-/// <param name="Operand">The operand expression.</param>
-public record Unary(TokenType Operator, Expr Operand) : Expr;
+#endregion
+
+#region Operations
 
 /// <summary>
 /// A binary operation, e.g. <c>val1 + val2</c>. Both operands are themselves
@@ -43,6 +50,10 @@ public record Unary(TokenType Operator, Expr Operand) : Expr;
 /// <param name="Operator">The operator token type (e.g. <c>PLUS</c>).</param>
 /// <param name="Right">The right-hand operand.</param>
 public record Binary(Expr Left, TokenType Operator, Expr Right) : Expr;
+
+#endregion
+
+#region Access & calls
 
 /// <summary>
 /// Member access on an object, e.g. the <c>term.out</c> part of
@@ -60,4 +71,4 @@ public record MemberAccess(Expr Object, string Member) : Expr;
 /// <param name="Arguments">The argument expressions, in order (may be empty).</param>
 public record Call(Expr Callee, IReadOnlyList<Expr> Arguments) : Expr;
 
-public record CharLiteral(char Value) : Expr;
+#endregion

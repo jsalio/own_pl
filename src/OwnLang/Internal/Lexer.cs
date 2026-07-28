@@ -11,6 +11,8 @@ namespace Own_Lang.Internal;
 /// </summary>
 internal sealed class Lexer : ILexer
 {
+    #region State
+
     private static readonly Dictionary<string, TokenType> Keywords = new()
     {
         ["def"] = TokenType.DEF,
@@ -44,6 +46,10 @@ internal sealed class Lexer : ILexer
 
     private const char CHARDEFINITION = '\'';
 
+    #endregion
+
+    #region Public API
+
     /// <summary>Creates a lexer over the given source text.</summary>
     /// <param name="source">The full source code to tokenize.</param>
     public Lexer(string source)
@@ -64,6 +70,10 @@ internal sealed class Lexer : ILexer
         AddToken(TokenType.EOF);
         return tokens;
     }
+
+    #endregion
+
+    #region Scanning (un token a la vez)
 
     private void ScanToken()
     {
@@ -215,11 +225,19 @@ internal sealed class Lexer : ILexer
         AddToken(type);
     }
 
+    #endregion
+
+    #region Character classification
+
     private static bool IsAlpha(char c)
         => char.IsLetter(c) || c == '_';
 
     private static bool IsAlphaNumeric(char c)
         => IsAlpha(c) || char.IsDigit(c);
+
+    #endregion
+
+    #region Cursor & helpers
 
     private bool IsAtEnd() => current >= source.Length;
 
@@ -255,4 +273,6 @@ internal sealed class Lexer : ILexer
         column++;
         return true;
     }
+
+    #endregion
 }
