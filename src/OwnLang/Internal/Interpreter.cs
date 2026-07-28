@@ -1,3 +1,6 @@
+using System.Globalization;
+using Own_Lang.Internal.Error;
+
 namespace Own_Lang.Internal.Contracts;
 
 /// <summary>
@@ -43,6 +46,8 @@ internal sealed class Interpreter : IInterpreter
         {
             case VarDecl d:
                 object? value = Evaluate(d.Initializer);
+                if (d.DeclareType is not null)
+                    value = Coerce(d.DeclareType, d.Name, value);
                 environment.Define(d.Name, value);
                 break;
 
@@ -57,6 +62,47 @@ internal sealed class Interpreter : IInterpreter
                 }
                 break;
 
+            case WhenStmt w:
+                if (IsTruthy(Evaluate(w.Condition)))
+                    Execute(w.Then);
+                else if (w.Else is not null)
+                    Execute(w.Else);
+                break;
+
+            case StopStmt:
+                throw new BreakSignal();
+
+            case LoopStmt l:
+                try
+                {
+                    while (true)
+                        Execute(l.Body);
+                }
+                catch (BreakSignal) { }
+                break;
+
+            case WhileStmt w:
+                try
+                {
+                    while (IsTruthy(Evaluate(w.Condition)))
+                        Execute(w.Body);
+                }
+                catch (BreakSignal) { }
+                break;
+
+            case RangeLoopStmt r:
+                int from = (int)Evaluate(r.From)!, to = (int)Evaluate(r.To)!;
+                try
+                {
+                    for (int index = from; index <= to; index++)
+                    {
+                        environment.Define(r.Variable, index); // expone el contador
+                        Execute(r.Body);
+                    }
+                }
+                catch (BreakSignal) { }
+                break;
+
             default:
                 throw new System.Exception(
                     $"Sentencia no soportada: {stmt.GetType().Name}");
@@ -65,19 +111,123 @@ internal sealed class Interpreter : IInterpreter
 
     // ---- Evaluación de expresiones (producen un valor) ----
 
+    private static void CheckType(string declareType, string name, object? value)
+    {
+        bool ok = declareType switch
+        {
+            "string" => value is string,
+            "bool" => value is bool,
+            "char" => value is char,
+            _ => true
+        };
+        if (!ok)
+            throw new System.Exception(
+                    $"Error in type : '{name}' is declare as {declareType} but ," +
+                    $"received {value?.GetType().Name ?? null}"
+                    );
+    }
+
     private object? Evaluate(Expr expr)
     {
         return expr switch
         {
             NumberLiteral n => n.Value,
             StringLiteral s => s.Value,
-            Variable v      => environment.Get(v.Name),
-            Binary b        => EvaluateBinary(b),
-            Call c          => EvaluateCall(c),
+            Variable v => environment.Get(v.Name),
+            Binary b => EvaluateBinary(b),
+            Call c => EvaluateCall(c),
+            BooleanLiteral b => b.Value,
+            CharLiteral c => c.Value,
             _ => throw new System.Exception(
                      $"Expresión no soportada: {expr.GetType().Name}")
         };
     }
+
+    private static object? Coerce(string type, string name, object? value) => type switch
+    {
+        "string" => value is string ? value : throw new TypeError(TypeError.ErrorMessage(name, "string", value?.GetType().Name ?? "null")),
+        "bool" => value is bool ? value : throw new TypeError(TypeError.ErrorMessage(name, "bool", value?.GetType().Name ?? "null")),
+        "char" => value is char ? value : throw new TypeError(TypeError.ErrorMessage(name, "char", value?.GetType().Name ?? "null")),
+        "int" => ToInt(value),
+        "uint" => ToUInt(value),
+        "long" => ToLong(value),
+        "ulong" => ToULong(value),
+        "double" => ToDouble(value),
+        "float" => ToFloat(value),
+        _ => value
+    };
+
+    private static bool IsTruthy(object? value)
+    {
+        if (value is bool b) return b;
+        throw new System.Exception("La condición de 'when' debe ser booleana");
+    }
+
+    private static int ToInt(object? value)
+    {
+        long number = AsLong(value);
+        if (number > int.MaxValue || number > int.MaxValue)
+            throw new OverflowError("don't use int space");
+        return (int)number;
+    }
+
+    private static uint ToUInt(object? value)
+    {
+        long number = AsLong(value);
+        if (number < 0 || number > uint.MaxValue)
+            throw new OverflowError("");
+        return (uint)number;
+    }
+
+    private static long ToLong(object? value) => value switch
+    {
+        int i => i,
+        uint u => u,
+        long l => l,
+        ulong ul => ul <= long.MaxValue ? (long)ul : throw new OverflowError("can't insert ulong into long"),
+        _ => throw new MathError($"Invalid number {value}")
+    };
+
+    private static ulong ToULong(object? value) => value switch
+    {
+        int i => i >= 0 ? (ulong)i : throw new OverflowError("negative value is not ulong"),
+        long l => l >= 0 ? (ulong)l : throw new OverflowError("negative valur is not ulong"),
+        uint u => u,
+        ulong ul => ul,
+        _ => throw new MathError($"Invalid number {value}")
+    };
+
+    private static double ToDouble(object? value) => value switch
+    {
+        int i => i,
+        uint u => u,
+        long l => l,
+        ulong ul => ul,
+        double d => d,
+        float f => f,
+        _ => throw new MathError($"Invalid number {value}")
+    };
+
+    private static float ToFloat(object? value) => value switch
+    {
+        int i => i,
+        uint u => u,
+        long l => l,
+        ulong ul => ul,
+        float f => f,
+        double d => (float)d,   // narrowing double->float (esperado)
+        _ => throw new MathError($"Invalid number {value}")
+    };
+
+    private static long AsLong(object? value) => value switch
+    {
+        int i => i,
+        uint u => u,
+        long l => l,
+        ulong ul => ul <= long.MaxValue ? (long)ul : throw new OverflowError("ulong don't ose same space that long"),
+        double or float => throw new OverflowError("no se puede asignar un decimal a un tipo entero"),
+        _ => throw new MathError($"Invalid number {value}")
+    };
 
     private object? EvaluateCall(Call call)
     {
@@ -92,7 +242,7 @@ internal sealed class Interpreter : IInterpreter
                 ? Evaluate(call.Arguments[0])
                 : null;
 
-            System.Console.WriteLine(argument);
+            System.Console.WriteLine(Stringify(argument));
             return null;
         }
 
@@ -100,28 +250,178 @@ internal sealed class Interpreter : IInterpreter
             "Llamada no soportada: por ahora solo existe 'term.out(...)'");
     }
 
+    // Formatea decimales con InvariantCulture para que la salida use '.' (igual
+    // que la sintaxis de entrada) sin depender del locale del sistema.
+    private static string Stringify(object? value) => value switch
+    {
+        null => "",
+        double d => d.ToString(CultureInfo.InvariantCulture),
+        float f => f.ToString(CultureInfo.InvariantCulture),
+        _ => value.ToString() ?? ""
+    };
+
+    private static object? NumericInt(TokenType op, int a, int b)
+    {
+        try
+        {
+            return op switch
+            {
+                TokenType.PLUS => checked(a + b),
+                TokenType.MINUS => checked(a - b),
+                TokenType.STAR => checked(a * b),
+                TokenType.SLASH => b == 0 ? throw new MathError("Division by zero detected") : checked(a / b),
+                TokenType.GREATER => a > b,
+                TokenType.GREATER_EQUAL => a >= b,
+                TokenType.LESS => a < b,
+                TokenType.LESS_EQUAL => a <= b,
+                // TokenType.EQUAL_EQUAL => a == b,
+                // TokenType.BANG_EQUAL => a != b,
+                _ => throw new MathError("Invalid operator for int operation: " + op)
+            };
+        }
+        catch (System.OverflowException)
+        {
+            throw new OverflowError($"Overflow detected in int operation : {op} {a} {b}");
+        }
+    }
+
+    private static object? NumericUInt(TokenType op, uint a, uint b)
+    {
+        try
+        {
+            return op switch
+            {
+                TokenType.PLUS => checked(a + b),
+                TokenType.MINUS => checked(a - b),
+                TokenType.STAR => checked(a * b),
+                TokenType.SLASH => b == 0 ? throw new MathError("Division by zero detected") : checked(a / b),
+                TokenType.GREATER => a > b,
+                TokenType.GREATER_EQUAL => a >= b,
+                TokenType.LESS => a < b,
+                TokenType.LESS_EQUAL => a <= b,
+                // TokenType.EQUAL_EQUAL => a == b,
+                // TokenType.BANG_EQUAL => a != b,
+                _ => throw new MathError("Invalid operator for uint operation: " + op)
+            };
+        }
+        catch (System.OverflowException)
+        {
+            throw new OverflowError($"Overflow detected in uint operation : {op} {a} {b}");
+        }
+    }
+
+    private static object? NumericLong(TokenType op, long a, long b)
+    {
+        try
+        {
+            return op switch
+            {
+                TokenType.PLUS => checked(a + b),
+                TokenType.MINUS => checked(a - b),
+                TokenType.STAR => checked(a * b),
+                TokenType.SLASH => b == 0 ? throw new MathError("Division by zero detected") : checked(a / b),
+                TokenType.GREATER => a > b,
+                TokenType.GREATER_EQUAL => a >= b,
+                TokenType.LESS => a < b,
+                TokenType.LESS_EQUAL => a <= b,
+                // TokenType.EQUAL_EQUAL => a == b,
+                // TokenType.BANG_EQUAL => a != b,
+                _ => throw new MathError("Invalid operator for int operation: " + op)
+            };
+        }
+        catch (System.OverflowException)
+        {
+            throw new OverflowError($"Overflow detected in long operation : {op} {a} {b}");
+        }
+    }
+
+    private static object? NumericUlong(TokenType op, ulong a, ulong b)
+    {
+        try
+        {
+            return op switch
+            {
+                TokenType.PLUS => checked(a + b),
+                TokenType.MINUS => checked(a - b),
+                TokenType.STAR => checked(a * b),
+                TokenType.SLASH => b == 0 ? throw new MathError("Division by zero detected") : checked(a / b),
+                TokenType.GREATER => a > b,
+                TokenType.GREATER_EQUAL => a >= b,
+                TokenType.LESS => a < b,
+                TokenType.LESS_EQUAL => a <= b,
+                // TokenType.EQUAL_EQUAL => a == b,
+                // TokenType.BANG_EQUAL => a != b,
+                _ => throw new MathError("Invalid operator for ulong operation: " + op)
+            };
+        }
+        catch (System.OverflowException)
+        {
+            throw new OverflowError($"Overflow detected in ulong operation : {op} {a} {b}");
+        }
+    }
+
+    // Flotantes: semántica IEEE nativa. Sin checked ni división-por-cero especial
+    // (/0.0 -> Infinity, overflow -> Infinity, NaN es un valor válido).
+    private static object? NumericDouble(TokenType op, double a, double b) => op switch
+    {
+        TokenType.PLUS => a + b,
+        TokenType.MINUS => a - b,
+        TokenType.STAR => a * b,
+        TokenType.SLASH => a / b,
+        TokenType.GREATER => a > b,
+        TokenType.GREATER_EQUAL => a >= b,
+        TokenType.LESS => a < b,
+        TokenType.LESS_EQUAL => a <= b,
+        _ => throw new MathError("Invalid operator for double operation: " + op)
+    };
+
+    private static object? NumericFloat(TokenType op, float a, float b) => op switch
+    {
+        TokenType.PLUS => a + b,
+        TokenType.MINUS => a - b,
+        TokenType.STAR => a * b,
+        TokenType.SLASH => a / b,
+        TokenType.GREATER => a > b,
+        TokenType.GREATER_EQUAL => a >= b,
+        TokenType.LESS => a < b,
+        TokenType.LESS_EQUAL => a <= b,
+        _ => throw new MathError("Invalid operator for float operation: " + op)
+    };
+
     private object? EvaluateBinary(Binary b)
     {
         object? left = Evaluate(b.Left);
         object? right = Evaluate(b.Right);
-        
-        int TryDivide(object? a, object? b)
-        {
-            if (b is int divisor && divisor == 0)
-            {
-                throw new MathError("Division by zero detected");
-            }
-            return (int)a! / (int)b!;
-        }
 
-        return b.Operator switch
+        int width = System.Math.Max(Width(left), Width(right));
+        bool signed = Signed(left) || Signed(right);
+
+        if (b.Operator == TokenType.PLUS && (left is string || right is string))
+            return Stringify(left) + Stringify(right);
+
+        if (b.Operator == TokenType.EQUAL_EQUAL) return left!.Equals(right);
+        if (b.Operator == TokenType.BANG_EQUAL) return !left!.Equals(right);
+
+        // Capa flotante: si algún operando es decimal, la operación es decimal.
+        // double gana a float; los enteros se promueven al flotante.
+        if (left is double || right is double)
+            return NumericDouble(b.Operator, ToDouble(left), ToDouble(right));
+        if (left is float || right is float)
+            return NumericFloat(b.Operator, ToFloat(left), ToFloat(right));
+
+        // Enteros: promoción por ancho máximo, gana signed.
+        return (width, signed) switch
         {
-            TokenType.PLUS => (int)left! + (int)right!,
-            TokenType.MINUS => (int)left! - (int)right!,
-            TokenType.STAR => (int)left! * (int)right!,
-            TokenType.SLASH => TryDivide(left, right),
-            _ => throw new System.Exception(
-                     $"Operador no soportado: {b.Operator}")
+            (32, true) => NumericInt(b.Operator, ToInt(left), ToInt(right)),
+            (32, false) => NumericUInt(b.Operator, ToUInt(left), ToUInt(right)),
+            (64, true) => NumericLong(b.Operator, ToLong(left), ToLong(right)),
+            _ => NumericUlong(b.Operator, ToULong(left), ToULong(right))
         };
     }
+
+    private static int Width(object? v)
+        => v is long || v is ulong ? 64 : 32;
+
+    private static bool Signed(object? v)
+        => v is int || v is long;
 }

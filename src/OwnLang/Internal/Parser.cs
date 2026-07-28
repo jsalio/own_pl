@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using Own_Lang.Internal.Contracts;
 
@@ -8,8 +9,8 @@ namespace Own_Lang.Internal;
 /// Stage 2 implementation: a recursive-descent parser. Holds a cursor
 /// (<c>current</c>) over the token list and exposes one private method per
 /// grammar rule. Operator precedence is encoded by the call order of the
-/// expression methods (Expression → Additive → Multiplicative → Call → Primary),
-/// not by any explicit precedence table.
+/// expression methods (Expression → Equality → Comparison → Additive →
+/// Multiplicative → Call → Primary), not by any explicit precedence table.
 /// </summary>
 internal sealed class Parser : IParser
 {
@@ -36,6 +37,9 @@ internal sealed class Parser : IParser
             { TokenType.STRING,     BuildStringToken },
             { TokenType.IDENTIFIER, BuildIdentifierToken },
             { TokenType.LPAREN,     BuildParenToken },
+            { TokenType.TRUE,       BuildBooleanToken },
+            { TokenType.FALSE,      BuildBooleanToken },
+            { TokenType.CHAR, BuildCharToken },
         };
 
         primaryStartTokens = primaryBuilders.Keys.ToArray();
@@ -129,12 +133,24 @@ internal sealed class Parser : IParser
     // Statement -> VarDecl | ExpressionStmt
     private Stmt Statement()
     {
-        if (Match(TokenType.LET)) return VarDeclaration();
+        if (Match(TokenType.LET)) return VarDeclaration(null);
+        if (Match(TokenType.TYPE_STRING)) return VarDeclaration("string");
+        if (Match(TokenType.TYPE_BOOL)) return VarDeclaration("bool");
+        if (Match(TokenType.TYPE_CHAR)) return VarDeclaration("char");
+        if (Match(TokenType.TYPE_INT)) return VarDeclaration("int");
+        if (Match(TokenType.TYPE_UINT)) return VarDeclaration("uint");
+        if (Match(TokenType.TYPE_LONG)) return VarDeclaration("long");
+        if (Match(TokenType.TYPE_ULONG)) return VarDeclaration("ulong");
+        if (Match(TokenType.TYPE_DOUBLE)) return VarDeclaration("double");
+        if (Match(TokenType.TYPE_FLOAT)) return VarDeclaration("float");
+        if (Match(TokenType.WHEN)) return WhenStatement();
+        if (Match(TokenType.LOOP)) return LoopStatement();
+        if (Match(TokenType.STOP)) return StopStatement();
         return ExpressionStatement();
     }
 
     // VarDecl -> "let" IDENTIFIER "=" Expression ";"   ("let" ya consumido)
-    private Stmt VarDeclaration()
+    private Stmt VarDeclaration(string? declareType)
     {
         Token name = Consume(TokenType.IDENTIFIER,
             "se esperaba el nombre de la variable después de 'let'");
@@ -143,7 +159,62 @@ internal sealed class Parser : IParser
         Expr initializer = Expression();
         Consume(TokenType.SEMICOLON,
             "se esperaba ';' al final de la declaración");
-        return new VarDecl(name.Lexeme, initializer);
+        return new VarDecl(declareType, name.Lexeme, initializer);
+    }
+
+    private Stmt WhenStatement()
+    {
+        Consume(TokenType.LPAREN, "se esperaba '(' despues de 'when'");
+        Expr condition = Expression();
+        Consume(TokenType.RPAREN, "se esperaba ')' despues de la condicion");
+        Block thenCodeBlock = Block();
+        Stmt? elseCodeBlock = null;
+        if (Match(TokenType.ELSE))
+        {
+            //else when(...) -> recursion; else {...} -> bloque
+            elseCodeBlock = Match(TokenType.WHEN) ? WhenStatement() : Block();
+        }
+        return new WhenStmt(condition, thenCodeBlock, elseCodeBlock);
+    }
+
+    // loopStmt -> "loop" ( "[" IDENT ":" expr "..." expr "]" | "when" "(" expr ")" )? block
+    // ("loop" ya consumido)
+    private Stmt LoopStatement()
+    {
+        // loop[i: from...to] { }  -> bucle contado
+        if (Match(TokenType.LBRACKET))
+        {
+            Token variable = Consume(TokenType.IDENTIFIER,
+                "se esperaba el nombre del contador después de '['");
+            Consume(TokenType.COLON, "se esperaba ':' después del contador");
+            Expr from = Expression();
+            Consume(TokenType.RANGE, "se esperaba '...' en el rango");
+            Expr to = Expression();
+            Consume(TokenType.RBRACKET, "se esperaba ']' para cerrar el rango");
+            Block rangeBody = Block();
+            return new RangeLoopStmt(variable.Lexeme, from, to, rangeBody);
+        }
+
+        // loop when(cond) { }  -> while pre-test
+        if (Match(TokenType.WHEN))
+        {
+            Consume(TokenType.LPAREN, "se esperaba '(' después de 'when'");
+            Expr condition = Expression();
+            Consume(TokenType.RPAREN, "se esperaba ')' después de la condición");
+            Block whileBody = Block();
+            return new WhileStmt(condition, whileBody);
+        }
+
+        // loop { }  -> infinito (se sale con 'stop')
+        Block body = Block();
+        return new LoopStmt(body);
+    }
+
+    // stopStmt -> "stop" ";"   ("stop" ya consumido)
+    private Stmt StopStatement()
+    {
+        Consume(TokenType.SEMICOLON, "se esperaba ';' después de 'stop'");
+        return new StopStmt();
     }
 
     // ExpressionStmt -> Expression ";"
@@ -172,8 +243,8 @@ internal sealed class Parser : IParser
 
     // ---- Gramática: expresiones ----
 
-    // Expression -> Additive
-    private Expr Expression() => Additive();
+    // Expression -> Equality
+    private Expr Expression() => Equality();
 
     // Additive -> Call ( ("+" | "-") Call )*
     // '+' y '-' comparten nivel de precedencia y asociatividad izquierda,
@@ -181,7 +252,7 @@ internal sealed class Parser : IParser
     // El mismo bucle empareja ambos, permitiendo mezclas como 10 - 2 + 3.
     private Expr Additive()
     {
-        
+
         Expr expr = Multiplicative();
 
         while (Match(TokenType.PLUS, TokenType.MINUS))
@@ -193,7 +264,36 @@ internal sealed class Parser : IParser
 
         return expr;
     }
-    
+
+    private Expr Equality()
+    {
+        Expr expr = Comparison();
+
+        while (Match(TokenType.EQUAL_EQUAL, TokenType.BANG_EQUAL))
+        {
+            TokenType op = Previous().Type;
+            Expr right = Comparison();
+            expr = new Binary(expr, op, right);
+        }
+
+        return expr;
+    }
+
+    private Expr Comparison()
+    {
+        Expr expr = Additive();
+
+        while (Match(TokenType.EQUAL_EQUAL, TokenType.BANG_EQUAL, TokenType.LESS,
+            TokenType.LESS_EQUAL, TokenType.GREATER, TokenType.GREATER_EQUAL))
+        {
+            TokenType op = Previous().Type;
+            Expr right = Additive();
+            expr = new Binary(expr, op, right);
+        }
+
+        return expr;
+    }
+
     private Expr Multiplicative()
     {
         Expr expr = Call();
@@ -268,7 +368,25 @@ internal sealed class Parser : IParser
 
     private Expr BuildNumericToken()
     {
-        int value = int.Parse(Previous().Lexeme);
+        string lexeme = Previous().Lexeme;
+
+        // Sufijo 'f' -> float (3.14f, 5f)
+        if (lexeme.EndsWith("f") || lexeme.EndsWith("F"))
+        {
+            float f = float.Parse(lexeme[..^1], CultureInfo.InvariantCulture);
+            return new NumberLiteral(f);
+        }
+
+        // Punto decimal -> double
+        if (lexeme.Contains('.'))
+        {
+            double d = double.Parse(lexeme, CultureInfo.InvariantCulture);
+            return new NumberLiteral(d);
+        }
+
+        // Entero: auto-ensanchado (int si cabe, si no long)
+        long number = long.Parse(lexeme);
+        object value = (number >= int.MinValue && number <= int.MaxValue) ? (object)(int)number : (object)number;
         return new NumberLiteral(value);
     }
 
@@ -287,6 +405,18 @@ internal sealed class Parser : IParser
         Expr expr = Expression();
         Consume(TokenType.RPAREN, "se esperaba ')' para cerrar la expresión");
         return expr;
+    }
+
+    private Expr BuildBooleanToken()
+    {
+        bool value = Previous().Type == TokenType.TRUE;
+        return new BooleanLiteral(value);
+    }
+
+    private Expr BuildCharToken()
+    {
+        string raw = Previous().Lexeme;
+        return new CharLiteral(raw[1]);
     }
 
     // ---- Helpers: navegación sobre los tokens ----

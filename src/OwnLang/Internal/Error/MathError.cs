@@ -1,5 +1,3 @@
-using System;
-
 namespace Own_Lang.Internal;
 
 /// <summary>

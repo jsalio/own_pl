@@ -13,10 +13,25 @@ internal sealed class Lexer : ILexer
 {
     private static readonly Dictionary<string, TokenType> Keywords = new()
     {
-        ["def"]      = TokenType.DEF,
+        ["def"] = TokenType.DEF,
         ["function"] = TokenType.FUNCTION,
-        ["empty"]    = TokenType.EMPTY,
-        ["let"]      = TokenType.LET,
+        ["empty"] = TokenType.EMPTY,
+        ["let"] = TokenType.LET,
+        ["true"] = TokenType.TRUE,
+        ["false"] = TokenType.FALSE,
+        ["when"] = TokenType.WHEN,
+        ["else"] = TokenType.ELSE,
+        ["loop"] = TokenType.LOOP,
+        ["stop"] = TokenType.STOP,
+        ["string"] = TokenType.TYPE_STRING,
+        ["bool"] = TokenType.TYPE_BOOL,
+        ["char"] = TokenType.TYPE_CHAR,
+        ["int"] = TokenType.TYPE_INT,
+        ["uint"] = TokenType.TYPE_UINT,
+        ["long"] = TokenType.TYPE_LONG,
+        ["ulong"] = TokenType.TYPE_ULONG,
+        ["double"] = TokenType.TYPE_DOUBLE,
+        ["float"] = TokenType.TYPE_FLOAT,
     };
 
     private readonly string source;
@@ -26,6 +41,8 @@ internal sealed class Lexer : ILexer
     private int current = 0;
     private int line = 1;
     private int column = 1;
+
+    private const char CHARDEFINITION = '\'';
 
     /// <summary>Creates a lexer over the given source text.</summary>
     /// <param name="source">The full source code to tokenize.</param>
@@ -58,13 +75,35 @@ internal sealed class Lexer : ILexer
             case '(': AddToken(TokenType.LPAREN); break;
             case ')': AddToken(TokenType.RPAREN); break;
             case ';': AddToken(TokenType.SEMICOLON); break;
-            case '=': AddToken(TokenType.EQUAL); break;
+            case '=': AddToken(Match('=') ? TokenType.EQUAL_EQUAL : TokenType.EQUAL); break;
+            case '!': AddToken(Match('=') ? TokenType.BANG_EQUAL : TokenType.BANG); break;
+            case '<': AddToken(Match('=') ? TokenType.LESS_EQUAL : TokenType.LESS); break;
+            case '>': AddToken(Match('=') ? TokenType.GREATER_EQUAL : TokenType.GREATER); break;
             case '+': AddToken(TokenType.PLUS); break;
             case '-': AddToken(TokenType.MINUS); break;
-            case '.': AddToken(TokenType.DOT); break;
+            case '.':
+                if (Match('.'))
+                {
+                    // vimos ".."; exigimos el tercer punto para formar "..."
+                    if (!Match('.'))
+                    {
+                        throw new System.Exception(
+                            $"Se esperaba '...' en la línea {line}, columna {column}");
+                    }
+                    AddToken(TokenType.RANGE);
+                }
+                else
+                {
+                    AddToken(TokenType.DOT);
+                }
+                break;
             case ',': AddToken(TokenType.COMMA); break;
             case '*': AddToken(TokenType.STAR); break;
-            case '/': AddToken(TokenType.SLASH);  break;
+            case '/': AddToken(TokenType.SLASH); break;
+            case '[': AddToken(TokenType.LBRACKET); break;
+            case ']': AddToken(TokenType.RBRACKET); break;
+            case ':': AddToken(TokenType.COLON); break;
+
 
             case '"': String(); break;
 
@@ -77,6 +116,10 @@ internal sealed class Lexer : ILexer
             case '\n':
                 line++;
                 column = 1;
+                break;
+
+            case CHARDEFINITION:
+                Char();
                 break;
 
             default:
@@ -100,6 +143,23 @@ internal sealed class Lexer : ILexer
     private void Number()
     {
         while (char.IsDigit(Peek()))
+        {
+            Advance();
+        }
+
+        // Parte fraccionaria: solo si el '.' va seguido de un dígito
+        // (así '1...3' y 'term.out' no se confunden con un decimal).
+        if (Peek() == '.' && char.IsDigit(PeekNext()))
+        {
+            Advance(); // consume el '.'
+            while (char.IsDigit(Peek()))
+            {
+                Advance();
+            }
+        }
+
+        // Sufijo de float: 3.14f o 5f
+        if (Peek() == 'f' || Peek() == 'F')
         {
             Advance();
         }
@@ -128,6 +188,16 @@ internal sealed class Lexer : ILexer
         Advance(); // consume la comilla de cierre "
 
         AddToken(TokenType.STRING);
+    }
+
+    private void Char()
+    {
+        if (IsAtEnd() || Peek() == CHARDEFINITION)
+            throw new Exception($"Char empty in line {line}...");
+        Advance();
+        if (!Match(CHARDEFINITION))
+            throw new Exception($"Wait \"'\" for close...");
+        AddToken(TokenType.CHAR);
     }
 
     private void Identifier()
@@ -165,11 +235,24 @@ internal sealed class Lexer : ILexer
         return source[current];
     }
 
+    private char PeekNext()
+    {
+        if (current + 1 >= source.Length) return '\0';
+        return source[current + 1];
+    }
+
     private void AddToken(TokenType type)
     {
         string lexeme = source.Substring(start, current - start);
         tokens.Add(new Token(type, lexeme, line, column));
     }
 
-    private bool Match(char expected) => throw new System.NotImplementedException();
+    private bool Match(char expected)
+    {
+        if (IsAtEnd()) return false;
+        if (source[current] != expected) return false;
+        current++;
+        column++;
+        return true;
+    }
 }

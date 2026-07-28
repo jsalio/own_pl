@@ -4,10 +4,9 @@ using Own_Lang.Internal.Contracts;
 string codigo = @"def program {
     function empty Main()
     {
-        term.out(2 + 3 * 4);
-        term.out(10 - 6 / 2);
-        term.out(2 * 3 + 4);
-        term.out(20 / 4 / 5);
+        double precio = 19.99;
+        float descuento = 0.1f;
+        term.out(""total: "" + (precio - precio * descuento));
     }
 }";
 
@@ -16,6 +15,11 @@ var tokens = lexer.Tokenize();
 
 var parser = new Parser(tokens);
 ProgramDecl program = parser.Parse();
+
+foreach (var stm in program.Declarations)  
+{
+    Console.Out.WriteLine(stm.ToString());
+}
 
 var interpreter = new Interpreter();
 interpreter.Interpret(program);

@@ -80,6 +80,120 @@ public class LexerTests
     }
 
     [Test]
+    public void DetectComparisonOperators()
+    {
+        Assert.That(TokenTypesOf("== != < <= > >="), Is.EqualTo(new[]
+        {
+            TokenType.EQUAL_EQUAL,
+            TokenType.BANG_EQUAL,
+            TokenType.LESS,
+            TokenType.LESS_EQUAL,
+            TokenType.GREATER,
+            TokenType.GREATER_EQUAL,
+        }));
+    }
+
+    [Test]
+    public void TwoCharOperatorIsASingleToken()
+    {
+        // '<=' debe ser UN token LESS_EQUAL, no LESS + EQUAL
+        Assert.That(TokenTypesOf("<="), Is.EqualTo(new[] { TokenType.LESS_EQUAL }));
+    }
+
+    [Test]
+    public void DetectBooleanKeywords()
+    {
+        Assert.That(TokenTypesOf("true false"), Is.EqualTo(new[]
+        {
+            TokenType.TRUE,
+            TokenType.FALSE,
+        }));
+    }
+
+    [Test]
+    public void DetectLoopTokens()
+    {
+        Assert.That(TokenTypesOf("loop stop [ ] :"), Is.EqualTo(new[]
+        {
+            TokenType.LOOP,
+            TokenType.STOP,
+            TokenType.LBRACKET,
+            TokenType.RBRACKET,
+            TokenType.COLON,
+        }));
+    }
+
+    [Test]
+    public void RangeIsASingleTokenButDotStaysDot()
+    {
+        // '...' -> un RANGE ;  '.' solo -> DOT (para term.out)
+        Assert.That(TokenTypesOf("..."), Is.EqualTo(new[] { TokenType.RANGE }));
+        Assert.That(TokenTypesOf("."), Is.EqualTo(new[] { TokenType.DOT }));
+    }
+
+    [Test]
+    public void DetectStringTypeKeyword()
+    {
+        // 'string' (el tipo) es TYPE_STRING, distinto de STRING (el literal)
+        Assert.That(TokenTypesOf("string"), Is.EqualTo(new[] { TokenType.TYPE_STRING }));
+        Assert.That(TokenTypesOf("\"hola\""), Is.EqualTo(new[] { TokenType.STRING }));
+    }
+
+    [Test]
+    public void DetectBoolTypeKeyword()
+    {
+        Assert.That(TokenTypesOf("bool"), Is.EqualTo(new[] { TokenType.TYPE_BOOL }));
+    }
+
+    [Test]
+    public void DetectCharTypeKeywordAndLiteral()
+    {
+        // 'char' es el tipo (TYPE_CHAR); 'a' es el literal (CHAR)
+        Assert.That(TokenTypesOf("char"), Is.EqualTo(new[] { TokenType.TYPE_CHAR }));
+        Assert.That(TokenTypesOf("'a'"), Is.EqualTo(new[] { TokenType.CHAR }));
+    }
+
+    [Test]
+    public void DetectIntAndUintTypeKeywords()
+    {
+        Assert.That(TokenTypesOf("int"),  Is.EqualTo(new[] { TokenType.TYPE_INT }));
+        Assert.That(TokenTypesOf("uint"), Is.EqualTo(new[] { TokenType.TYPE_UINT }));
+    }
+
+    [Test]
+    public void DetectLongAndUlongTypeKeywords()
+    {
+        Assert.That(TokenTypesOf("long"),  Is.EqualTo(new[] { TokenType.TYPE_LONG }));
+        Assert.That(TokenTypesOf("ulong"), Is.EqualTo(new[] { TokenType.TYPE_ULONG }));
+    }
+
+    [Test]
+    public void DetectDoubleAndFloatTypeKeywords()
+    {
+        Assert.That(TokenTypesOf("double"), Is.EqualTo(new[] { TokenType.TYPE_DOUBLE }));
+        Assert.That(TokenTypesOf("float"),  Is.EqualTo(new[] { TokenType.TYPE_FLOAT }));
+    }
+
+    [Test]
+    public void DecimalAndFloatLiteralsAreSingleTokens()
+    {
+        Assert.That(TokenTypesOf("3.14"), Is.EqualTo(new[] { TokenType.NUMBER }));
+        Assert.That(TokenTypesOf("1.5f"), Is.EqualTo(new[] { TokenType.NUMBER }));
+    }
+
+    [Test]
+    public void RangeIsNotConfusedWithDecimal()
+    {
+        // '1...3' debe seguir siendo NUMBER RANGE NUMBER, no un decimal
+        Assert.That(TokenTypesOf("1...3"), Is.EqualTo(new[]
+        {
+            TokenType.NUMBER,
+            TokenType.RANGE,
+            TokenType.NUMBER,
+        }));
+    }
+
+    [Test]
     public void DetectVarDeclarationSequence()
     {
         Assert.That(TokenTypesOf("let val1 = 1;"), Is.EqualTo(new[]

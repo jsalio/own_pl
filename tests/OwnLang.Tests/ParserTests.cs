@@ -76,6 +76,30 @@ public class ParserTests
     }
 
     [Test]
+    public void ComparisonBindsLooserThanArithmetic()
+    {
+        // 1 + 2 == 3  =>  (1 + 2) == 3
+        var expr = ParseExpression("1 + 2 == 3");
+
+        var outer = (Binary)expr;
+        Assert.That(outer.Operator, Is.EqualTo(TokenType.EQUAL_EQUAL));
+        Assert.That(outer.Right, Is.TypeOf<NumberLiteral>());   // el 3
+        Assert.That(outer.Left, Is.TypeOf<Binary>());           // (1 + 2)
+
+        var addition = (Binary)outer.Left;
+        Assert.That(addition.Operator, Is.EqualTo(TokenType.PLUS));
+    }
+
+    [Test]
+    public void ParsesBooleanLiteral()
+    {
+        var expr = ParseExpression("true");
+
+        Assert.That(expr, Is.TypeOf<BooleanLiteral>());
+        Assert.That(((BooleanLiteral)expr).Value, Is.True);
+    }
+
+    [Test]
     public void ParsesMemberCall()
     {
         // term.out(result)  =>  Call(MemberAccess(Variable term, "out"), [Variable result])
@@ -97,6 +121,144 @@ public class ParserTests
 
         var call = (Call)expr;
         Assert.That(call.Arguments, Has.Count.EqualTo(3));
+    }
+
+    [Test]
+    public void ElseWhenChainsAsNestedWhenStmt()
+    {
+        // el "else when" debe parsearse como un WhenStmt anidado en el Else
+        var program = Parse(
+            "def program { function empty Main() { " +
+            "when(true) { } else when(false) { } } }");
+        var function = (FunctionDecl)program.Declarations[0];
+        var when = (WhenStmt)function.Body.Statements[0];
+
+        Assert.That(when.Else, Is.TypeOf<WhenStmt>());
+    }
+
+    [Test]
+    public void SimpleWhenHasNoElse()
+    {
+        var program = Parse(
+            "def program { function empty Main() { when(true) { } } }");
+        var function = (FunctionDecl)program.Declarations[0];
+        var when = (WhenStmt)function.Body.Statements[0];
+
+        Assert.That(when.Else, Is.Null);
+    }
+
+    // Returns the first statement of Main's body for the given source.
+    private static Stmt FirstStatement(string body)
+    {
+        var program = Parse(
+            $"def program {{ function empty Main() {{ {body} }} }}");
+        var function = (FunctionDecl)program.Declarations[0];
+        return function.Body.Statements[0];
+    }
+
+    [Test]
+    public void ParsesInfiniteLoop()
+    {
+        Assert.That(FirstStatement("loop { }"), Is.TypeOf<LoopStmt>());
+    }
+
+    [Test]
+    public void ParsesWhileLoop()
+    {
+        Assert.That(FirstStatement("loop when(true) { }"), Is.TypeOf<WhileStmt>());
+    }
+
+    [Test]
+    public void ParsesRangeLoopWithNamedCounter()
+    {
+        var stmt = FirstStatement("loop[i: 1...3] { }");
+
+        Assert.That(stmt, Is.TypeOf<RangeLoopStmt>());
+        Assert.That(((RangeLoopStmt)stmt).Variable, Is.EqualTo("i"));
+    }
+
+    [Test]
+    public void ParsesStopStatement()
+    {
+        Assert.That(FirstStatement("stop;"), Is.TypeOf<StopStmt>());
+    }
+
+    [Test]
+    public void TypedDeclarationCarriesDeclaredType()
+    {
+        var stmt = FirstStatement("string s = \"hi\";");
+
+        Assert.That(stmt, Is.TypeOf<VarDecl>());
+        Assert.That(((VarDecl)stmt).DeclareType, Is.EqualTo("string"));
+    }
+
+    [Test]
+    public void TypedBoolDeclarationCarriesDeclaredType()
+    {
+        var stmt = FirstStatement("bool b = true;");
+
+        Assert.That(((VarDecl)stmt).DeclareType, Is.EqualTo("bool"));
+    }
+
+    [Test]
+    public void TypedCharDeclarationCarriesDeclaredType()
+    {
+        var stmt = FirstStatement("char c = 'x';");
+
+        Assert.That(((VarDecl)stmt).DeclareType, Is.EqualTo("char"));
+    }
+
+    [Test]
+    public void ParsesCharLiteral()
+    {
+        var expr = ParseExpression("'x'");
+
+        Assert.That(expr, Is.TypeOf<CharLiteral>());
+        Assert.That(((CharLiteral)expr).Value, Is.EqualTo('x'));
+    }
+
+    [Test]
+    public void TypedIntAndUintDeclarationsCarryDeclaredType()
+    {
+        Assert.That(((VarDecl)FirstStatement("int a = 5;")).DeclareType, Is.EqualTo("int"));
+        Assert.That(((VarDecl)FirstStatement("uint b = 5;")).DeclareType, Is.EqualTo("uint"));
+    }
+
+    [Test]
+    public void TypedLongAndUlongDeclarationsCarryDeclaredType()
+    {
+        Assert.That(((VarDecl)FirstStatement("long a = 5;")).DeclareType, Is.EqualTo("long"));
+        Assert.That(((VarDecl)FirstStatement("ulong b = 5;")).DeclareType, Is.EqualTo("ulong"));
+    }
+
+    [Test]
+    public void SmallLiteralIsIntBigLiteralIsLong()
+    {
+        // guard contra el gotcha del ternario: un literal chico debe seguir siendo int
+        Assert.That(((NumberLiteral)ParseExpression("5")).Value, Is.TypeOf<int>());
+        Assert.That(((NumberLiteral)ParseExpression("3000000000")).Value, Is.TypeOf<long>());
+    }
+
+    [Test]
+    public void TypedDoubleAndFloatDeclarationsCarryDeclaredType()
+    {
+        Assert.That(((VarDecl)FirstStatement("double d = 1.0;")).DeclareType, Is.EqualTo("double"));
+        Assert.That(((VarDecl)FirstStatement("float f = 1.0f;")).DeclareType, Is.EqualTo("float"));
+    }
+
+    [Test]
+    public void DecimalLiteralIsDoubleAndFloatSuffixIsFloat()
+    {
+        Assert.That(((NumberLiteral)ParseExpression("3.14")).Value, Is.TypeOf<double>());
+        Assert.That(((NumberLiteral)ParseExpression("1.5f")).Value, Is.TypeOf<float>());
+    }
+
+    [Test]
+    public void InferredDeclarationHasNullType()
+    {
+        var stmt = FirstStatement("let x = 1;");
+
+        Assert.That(((VarDecl)stmt).DeclareType, Is.Null);
     }
 
     [Test]
