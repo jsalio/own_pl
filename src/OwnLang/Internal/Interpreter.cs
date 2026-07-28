@@ -149,6 +149,8 @@ internal sealed class Interpreter : IInterpreter
         "char" => value is char ? value : throw new TypeError(TypeError.ErrorMessage(name, "char", value?.GetType().Name ?? "null")),
         "int" => ToInt(value),
         "uint" => ToUInt(value),
+        "long" => ToLong(value),
+        "ulong" => ToULong(value),
         _ => value
     };
 
@@ -158,18 +160,47 @@ internal sealed class Interpreter : IInterpreter
         throw new System.Exception("La condición de 'when' debe ser booleana");
     }
 
-    private static int ToInt(object? value) => value switch
+    private static int ToInt(object? value)
+    {
+        long number = AsLong(value);
+        if (number > int.MaxValue || number > int.MaxValue)
+            throw new OverflowError("don't use int space");
+        return (int)number;
+    }
+
+    private static uint ToUInt(object? value)
+    {
+        long number = AsLong(value);
+        if (number < 0 || number > uint.MaxValue)
+            throw new OverflowError("");
+        return (uint)number;
+    }
+
+    private static long ToLong(object? value) => value switch
     {
         int i => i,
-        uint u => u <= int.MaxValue ? (int)u : throw new OverflowError("uint value not cast to int"),
-        _ => throw new MathError("Value " + value + " cannot be cast to int")
+        uint u => u,
+        long l => l,
+        ulong ul => ul <= long.MaxValue ? (long)ul : throw new OverflowError("can't insert ulong into long"),
+        _ => throw new MathError($"Invalid number {value}")
     };
 
-    private static uint ToUInt(object? value) => value switch
+    private static ulong ToULong(object? value) => value switch
     {
+        int i => i >= 0 ? (ulong)i : throw new OverflowError("negative value is not ulong"),
+        long l => l >= 0 ? (ulong)l : throw new OverflowError("negative valur is not ulong"),
         uint u => u,
-        int i => i >= 0 ? (uint)i : throw new OverflowError("int value not cast to uint"),
-        _ => throw new MathError("Value " + value + " cannot be cast to uint")
+        ulong ul => ul,
+        _ => throw new MathError($"Invalid number {value}")
+    };
+
+    private static long AsLong(object? value) => value switch
+    {
+        int i => i,
+        uint u => u,
+        long l => l,
+        ulong ul => ul <= long.MaxValue ? (long)ul : throw new OverflowError("ulong don't ose same space that long"),
+        _ => throw new MathError($"Invalid number {value}")
     };
 
     private object? EvaluateCall(Call call)
@@ -246,11 +277,63 @@ internal sealed class Interpreter : IInterpreter
         }
     }
 
+    private static object? NumericLong(TokenType op, long a, long b)
+    {
+        try
+        {
+            return op switch
+            {
+                TokenType.PLUS => checked(a + b),
+                TokenType.MINUS => checked(a - b),
+                TokenType.STAR => checked(a * b),
+                TokenType.SLASH => b == 0 ? throw new MathError("Division by zero detected") : checked(a / b),
+                TokenType.GREATER => a > b,
+                TokenType.GREATER_EQUAL => a >= b,
+                TokenType.LESS => a < b,
+                TokenType.LESS_EQUAL => a <= b,
+                // TokenType.EQUAL_EQUAL => a == b,
+                // TokenType.BANG_EQUAL => a != b,
+                _ => throw new MathError("Invalid operator for int operation: " + op)
+            };
+        }
+        catch (System.OverflowException)
+        {
+            throw new OverflowError($"Overflow detected in long operation : {op} {a} {b}");
+        }
+    }
+
+    private static object? NumericUlong(TokenType op, ulong a, ulong b)
+    {
+        try
+        {
+            return op switch
+            {
+                TokenType.PLUS => checked(a + b),
+                TokenType.MINUS => checked(a - b),
+                TokenType.STAR => checked(a * b),
+                TokenType.SLASH => b == 0 ? throw new MathError("Division by zero detected") : checked(a / b),
+                TokenType.GREATER => a > b,
+                TokenType.GREATER_EQUAL => a >= b,
+                TokenType.LESS => a < b,
+                TokenType.LESS_EQUAL => a <= b,
+                // TokenType.EQUAL_EQUAL => a == b,
+                // TokenType.BANG_EQUAL => a != b,
+                _ => throw new MathError("Invalid operator for ulong operation: " + op)
+            };
+        }
+        catch (System.OverflowException)
+        {
+            throw new OverflowError($"Overflow detected in ulong operation : {op} {a} {b}");
+        }
+    }
+
     private object? EvaluateBinary(Binary b)
     {
         object? left = Evaluate(b.Left);
         object? right = Evaluate(b.Right);
 
+        int width = System.Math.Max(Width(left), Width(right));
+        bool signed = Signed(left) || Signed(right);
 
         if (b.Operator == TokenType.PLUS && (left is string || right is string))
             return Stringify(left) + Stringify(right);
@@ -258,11 +341,23 @@ internal sealed class Interpreter : IInterpreter
         if (b.Operator == TokenType.EQUAL_EQUAL) return left!.Equals(right);
         if (b.Operator == TokenType.BANG_EQUAL) return !left!.Equals(right);
 
-        if (left is uint lu && right is uint ru)
-            return NumericUInt(b.Operator, lu, ru);
+        return (width, signed) switch
+        {
+            (32, true) => NumericInt(b.Operator, ToInt(left), ToInt(right)),
+            (32, false) => NumericUInt(b.Operator, ToUInt(left), ToUInt(right)),
+            (64, true) => NumericLong(b.Operator, ToLong(left), ToLong(right)),
+            _ => NumericUlong(b.Operator, ToULong(left), ToULong(right))
+        };
 
-        return NumericInt(b.Operator, ToInt(left), ToInt(right));
+        //if (left is uint lu && right is uint ru)
+        //    return NumericUInt(b.Operator, lu, ru);
+
+        //return NumericInt(b.Operator, ToInt(left), ToInt(right));
     }
 
+    private static int Width(object? v)
+        => v is long || v is ulong ? 64 : 32;
 
+    private static bool Signed(object? v)
+        => v is int || v is long;
 }

@@ -28,6 +28,8 @@ internal sealed class Lexer : ILexer
         ["char"] = TokenType.TYPE_CHAR,
         ["int"] = TokenType.TYPE_INT,
         ["uint"] = TokenType.TYPE_UINT,
+        ["long"] = TokenType.TYPE_LONG,
+        ["ulong"] = TokenType.TYPE_ULONG,
     };
 
     private readonly string source;

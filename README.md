@@ -189,7 +189,7 @@ block          → "{" statement* "}"
 
 statement      → varDecl | whenStmt | loopStmt | stopStmt | exprStmt
 varDecl        → ( "let" | typeName ) IDENT "=" expression ";"
-typeName       → "string" | "bool" | "char" | "int" | "uint"
+typeName       → "string" | "bool" | "char" | "int" | "uint" | "long" | "ulong"
 whenStmt       → "when" "(" expression ")" block ( "else" ( whenStmt | block ) )?
 loopStmt       → "loop" ( "[" IDENT ":" expression "..." expression "]"
                         | "when" "(" expression ")" )? block
@@ -218,16 +218,20 @@ primary        → NUMBER | STRING | "true" | "false" | IDENT | "(" expression "
   operators. No logical operators (`&&`, `||`, `!`) yet. `+` concatenates when
   either operand is a string, coercing the other via `ToString()` (`"n" + 35` →
   `"n35"`); otherwise it is integer addition.
-- Integers are 32-bit `int` (signed) or `uint` (unsigned); no decimals yet.
-  Integer `/` truncates (`7 / 2` is `3`). Arithmetic is **checked**: any overflow
-  — at declaration (`uint x = 0 - 1;`) or in an operation (`2000000000 + 2000000000`)
-  — throws `OverflowError`. Mixing `int` and `uint` in an operation computes in
-  `int` (the `uint` is converted, failing if it exceeds `int` range).
+- Integers come in 32-bit (`int`/`uint`) and 64-bit (`long`/`ulong`), signed and
+  unsigned; no decimals yet. Integer `/` truncates (`7 / 2` is `3`). Arithmetic is
+  **checked**: any overflow — at declaration (`uint x = 0 - 1;`) or in an operation
+  (`2000000000 + 2000000000`) — throws `OverflowError`. Mixed-type operations
+  promote to the **widest** type, with **signed winning** ties (`int + long` →
+  `long`, `int + uint` → `int`); each operand is converted, failing if it doesn't
+  fit.
+- A bare integer literal auto-widens: it is `int` if it fits, otherwise `long`
+  (`long big = 3000000000;` works). `uint`/`ulong` values are produced by coercion
+  at a typed declaration.
 - Declarations are inferred (`let x = ...`) or typed (`string x = ...`,
-  `bool b = ...`, `uint n = 5;`); the type is checked dynamically at runtime
-  (`string x = 5;` fails). A bare integer literal is `int`; a `uint` value is
-  produced by coercion at a typed declaration. Usable type keywords so far:
-  `string`, `bool`, `char`, `int`, `uint`.
+  `bool b = ...`, `long n = 5;`); the type is checked dynamically at runtime
+  (`string x = 5;` fails). Usable type keywords so far: `string`, `bool`, `char`,
+  `int`, `uint`, `long`, `ulong`.
 - Conditionals (`when` / `else` / `else when`) and loops (`loop`, `loop when`,
   `loop[i: 1...3]`, with `stop`) exist. Conditions must be booleans (no
   truthiness coercion). `stop` outside a loop is an unhandled error.
@@ -244,9 +248,9 @@ primary        → NUMBER | STRING | "true" | "false" | IDENT | "(" expression "
 - [x] Conditionals: `when` / `else` / `else when` (`WhenStmt`, bool condition).
 - [x] Loops: `loop` (infinite), `loop when` (while), `loop[i: 1...3]` (counted),
   with `stop` (break via `BreakSignal`).
-- [~] Type system (dynamic): `string`, `bool`, `char`, `int` and `uint` done
-  (checked arithmetic, `int`/`uint` promotion); `long`/`ulong` and the decimal
-  family (`double`, `float`) pending.
+- [~] Type system (dynamic): `string`, `bool`, `char`, `int`, `uint`, `long` and
+  `ulong` done (checked arithmetic, width/signed promotion, auto-widening integer
+  literals); the decimal family (`double`, `float`) pending.
 - [ ] Logical operators: `&&`, `||`, `!`.
 - [ ] User-defined function calls + parameters (a chained `Environment` per scope).
 - [ ] Real objects instead of the `term.out` shortcut.

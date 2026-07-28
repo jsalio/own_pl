@@ -225,6 +225,21 @@ public class ParserTests
     }
 
     [Test]
+    public void TypedLongAndUlongDeclarationsCarryDeclaredType()
+    {
+        Assert.That(((VarDecl)FirstStatement("long a = 5;")).DeclareType, Is.EqualTo("long"));
+        Assert.That(((VarDecl)FirstStatement("ulong b = 5;")).DeclareType, Is.EqualTo("ulong"));
+    }
+
+    [Test]
+    public void SmallLiteralIsIntBigLiteralIsLong()
+    {
+        // guard contra el gotcha del ternario: un literal chico debe seguir siendo int
+        Assert.That(((NumberLiteral)ParseExpression("5")).Value, Is.TypeOf<int>());
+        Assert.That(((NumberLiteral)ParseExpression("3000000000")).Value, Is.TypeOf<long>());
+    }
+
+    [Test]
     public void InferredDeclarationHasNullType()
     {
         var stmt = FirstStatement("let x = 1;");

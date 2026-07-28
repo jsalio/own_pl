@@ -4,10 +4,16 @@ using Own_Lang.Internal.Contracts;
 string codigo = @"def program {
     function empty Main()
     {
-        int a = 5;
-        uint b = 5;
-        term.out(a + b);
-        term.out(7 / 2);
+        long a = 3000000000;
+        term.out(a);
+        long b = 5;
+        term.out(b + 1);
+        ulong c = 5;
+        term.out(c * 2);
+        term.out(3000000000 + 3000000000);
+        int i = 5;
+        long l = 10;
+        term.out(i + l);
     }
 }";
 

@@ -11,7 +11,7 @@ public abstract record Expr;
 
 /// <summary>An integer literal, e.g. <c>1</c>, <c>123</c>.</summary>
 /// <param name="Value">The parsed integer value.</param>
-public record NumberLiteral(int Value) : Expr;
+public record NumberLiteral(object Value) : Expr;
 
 /// <summary>A string literal, e.g. <c>"resultado:"</c>.</summary>
 /// <param name="Value">The text content, without the surrounding quotes.</param>

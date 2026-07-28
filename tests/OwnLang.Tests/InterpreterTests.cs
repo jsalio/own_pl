@@ -308,6 +308,26 @@ public class InterpreterTests
     }
 
     [Test]
+    public void LongStoresBigValue()
+    {
+        // literal auto-ensanchado a long (no cabe en int)
+        Assert.That(RunMain(@"long a = 3000000000; term.out(a);"), Is.EqualTo("3000000000"));
+    }
+
+    [Test]
+    public void IntAndLongMixPromotesToLong()
+    {
+        Assert.That(RunMain(@"int i = 5; long l = 10; term.out(i + l);"), Is.EqualTo("15"));
+    }
+
+    [Test]
+    public void LongAdditionDoesNotOverflow()
+    {
+        // ambos operandos son long -> cabe, no desborda (a diferencia de int)
+        Assert.That(Eval("3000000000 + 3000000000"), Is.EqualTo("6000000000"));
+    }
+
+    [Test]
     public void DivisionByZeroThrowsMathError()
     {
         Assert.That(() => Eval("1 / 0"), Throws.TypeOf<MathError>());

@@ -161,6 +161,13 @@ public class LexerTests
     }
 
     [Test]
+    public void DetectLongAndUlongTypeKeywords()
+    {
+        Assert.That(TokenTypesOf("long"),  Is.EqualTo(new[] { TokenType.TYPE_LONG }));
+        Assert.That(TokenTypesOf("ulong"), Is.EqualTo(new[] { TokenType.TYPE_ULONG }));
+    }
+
+    [Test]
     public void DetectVarDeclarationSequence()
     {
         Assert.That(TokenTypesOf("let val1 = 1;"), Is.EqualTo(new[]

@@ -81,6 +81,13 @@ public enum TokenType
     TYPE_INT,
     /// <summary>The <c>uint</c> keyword (uint type).</summary>
     TYPE_UINT,
+    /// <summary>The <c>long</c> keyword (long type).</summary>
+    TYPE_LONG,
+    /// <summary>The <c>ulong</c> keyword (ulong type).</summary>
+    TYPE_ULONG,
+    // TYPE_FLOAT,
+    // TYPE_DOUBLE,
+    // TYPE_DECIMAL,
 
 
     //Comparison operators

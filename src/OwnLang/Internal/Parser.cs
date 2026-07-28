@@ -138,6 +138,8 @@ internal sealed class Parser : IParser
         if (Match(TokenType.TYPE_CHAR)) return VarDeclaration("char");
         if (Match(TokenType.TYPE_INT)) return VarDeclaration("int");
         if (Match(TokenType.TYPE_UINT)) return VarDeclaration("uint");
+        if (Match(TokenType.TYPE_LONG)) return VarDeclaration("long");
+        if (Match(TokenType.TYPE_ULONG)) return VarDeclaration("ulong");
         if (Match(TokenType.WHEN)) return WhenStatement();
         if (Match(TokenType.LOOP)) return LoopStatement();
         if (Match(TokenType.STOP)) return StopStatement();
@@ -363,7 +365,9 @@ internal sealed class Parser : IParser
 
     private Expr BuildNumericToken()
     {
-        int value = int.Parse(Previous().Lexeme);
+        long number = long.Parse(Previous().Lexeme);
+        object value = (number >= int.MinValue && number <= int.MaxValue) ? (object)(int)number : (object)number;
+        //        int value = int.Parse(Previous().Lexeme);
         return new NumberLiteral(value);
     }
 
