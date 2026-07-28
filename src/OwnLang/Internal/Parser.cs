@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using Own_Lang.Internal.Contracts;
 
@@ -140,6 +141,8 @@ internal sealed class Parser : IParser
         if (Match(TokenType.TYPE_UINT)) return VarDeclaration("uint");
         if (Match(TokenType.TYPE_LONG)) return VarDeclaration("long");
         if (Match(TokenType.TYPE_ULONG)) return VarDeclaration("ulong");
+        if (Match(TokenType.TYPE_DOUBLE)) return VarDeclaration("double");
+        if (Match(TokenType.TYPE_FLOAT)) return VarDeclaration("float");
         if (Match(TokenType.WHEN)) return WhenStatement();
         if (Match(TokenType.LOOP)) return LoopStatement();
         if (Match(TokenType.STOP)) return StopStatement();
@@ -365,9 +368,25 @@ internal sealed class Parser : IParser
 
     private Expr BuildNumericToken()
     {
-        long number = long.Parse(Previous().Lexeme);
+        string lexeme = Previous().Lexeme;
+
+        // Sufijo 'f' -> float (3.14f, 5f)
+        if (lexeme.EndsWith("f") || lexeme.EndsWith("F"))
+        {
+            float f = float.Parse(lexeme[..^1], CultureInfo.InvariantCulture);
+            return new NumberLiteral(f);
+        }
+
+        // Punto decimal -> double
+        if (lexeme.Contains('.'))
+        {
+            double d = double.Parse(lexeme, CultureInfo.InvariantCulture);
+            return new NumberLiteral(d);
+        }
+
+        // Entero: auto-ensanchado (int si cabe, si no long)
+        long number = long.Parse(lexeme);
         object value = (number >= int.MinValue && number <= int.MaxValue) ? (object)(int)number : (object)number;
-        //        int value = int.Parse(Previous().Lexeme);
         return new NumberLiteral(value);
     }
 

@@ -91,7 +91,7 @@ Source code (string)
 Converts the raw text into a list of `Token`. It recognizes:
 
 - **Symbols:** `{ } ( ) [ ] ; , : . ... = + - * / == != < <= > >=`
-- **Numbers:** integers (`1`, `123`)
+- **Numbers:** integers (`1`, `123`), decimals (`3.14`), floats (`1.5f`)
 - **Strings:** `"text"`
 - **Chars:** `'a'` (exactly one character, single quotes)
 - **Identifiers and keywords** (told apart using a keyword table)
@@ -189,7 +189,8 @@ block          → "{" statement* "}"
 
 statement      → varDecl | whenStmt | loopStmt | stopStmt | exprStmt
 varDecl        → ( "let" | typeName ) IDENT "=" expression ";"
-typeName       → "string" | "bool" | "char" | "int" | "uint" | "long" | "ulong"
+typeName       → "string" | "bool" | "char"
+               | "int" | "uint" | "long" | "ulong" | "double" | "float"
 whenStmt       → "when" "(" expression ")" block ( "else" ( whenStmt | block ) )?
 loopStmt       → "loop" ( "[" IDENT ":" expression "..." expression "]"
                         | "when" "(" expression ")" )? block
@@ -219,15 +220,19 @@ primary        → NUMBER | STRING | "true" | "false" | IDENT | "(" expression "
   either operand is a string, coercing the other via `ToString()` (`"n" + 35` →
   `"n35"`); otherwise it is integer addition.
 - Integers come in 32-bit (`int`/`uint`) and 64-bit (`long`/`ulong`), signed and
-  unsigned; no decimals yet. Integer `/` truncates (`7 / 2` is `3`). Arithmetic is
-  **checked**: any overflow — at declaration (`uint x = 0 - 1;`) or in an operation
-  (`2000000000 + 2000000000`) — throws `OverflowError`. Mixed-type operations
-  promote to the **widest** type, with **signed winning** ties (`int + long` →
-  `long`, `int + uint` → `int`); each operand is converted, failing if it doesn't
-  fit.
-- A bare integer literal auto-widens: it is `int` if it fits, otherwise `long`
-  (`long big = 3000000000;` works). `uint`/`ulong` values are produced by coercion
-  at a typed declaration.
+  unsigned. **Integer** arithmetic is **checked**: any overflow — at declaration
+  (`uint x = 0 - 1;`) or in an operation (`2000000000 + 2000000000`) — throws
+  `OverflowError`; `/` truncates (`7 / 2` is `3`).
+- Decimals are `double` (64-bit) and `float` (32-bit), with **IEEE** semantics:
+  `1.0 / 0.0` is `Infinity` (no exception), `NaN` is a valid value. `float`
+  arithmetic (`7.0 / 2`) does not truncate.
+- Mixed-type operations promote: if any operand is a decimal the op is `double`
+  (then `float`); otherwise integers promote to the **widest** type with **signed
+  winning** ties (`int + long` → `long`, `int + uint` → `int`, `2.0 + 3` → `double`).
+  Assigning a decimal to an integer type (`int x = 3.14;`) is an error.
+- A bare integer literal auto-widens: it is `int` if it fits, otherwise `long`.
+  A decimal literal (`3.14`) is `double`; the `f` suffix (`1.5f`) makes it `float`.
+  `uint`/`ulong` values are produced by coercion at a typed declaration.
 - Declarations are inferred (`let x = ...`) or typed (`string x = ...`,
   `bool b = ...`, `long n = 5;`); the type is checked dynamically at runtime
   (`string x = 5;` fails). Usable type keywords so far: `string`, `bool`, `char`,
@@ -248,9 +253,9 @@ primary        → NUMBER | STRING | "true" | "false" | IDENT | "(" expression "
 - [x] Conditionals: `when` / `else` / `else when` (`WhenStmt`, bool condition).
 - [x] Loops: `loop` (infinite), `loop when` (while), `loop[i: 1...3]` (counted),
   with `stop` (break via `BreakSignal`).
-- [~] Type system (dynamic): `string`, `bool`, `char`, `int`, `uint`, `long` and
-  `ulong` done (checked arithmetic, width/signed promotion, auto-widening integer
-  literals); the decimal family (`double`, `float`) pending.
+- [x] Type system (dynamic): `string`, `bool`, `char`, and the full numeric family
+  — `int`, `uint`, `long`, `ulong` (checked, width/signed promotion, auto-widening
+  literals) and `double`, `float` (IEEE, decimal/`f`-suffix literals).
 - [ ] Logical operators: `&&`, `||`, `!`.
 - [ ] User-defined function calls + parameters (a chained `Environment` per scope).
 - [ ] Real objects instead of the `term.out` shortcut.

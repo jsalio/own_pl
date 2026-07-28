@@ -1,3 +1,4 @@
+using System.Globalization;
 using Own_Lang.Internal.Error;
 
 namespace Own_Lang.Internal.Contracts;
@@ -151,6 +152,8 @@ internal sealed class Interpreter : IInterpreter
         "uint" => ToUInt(value),
         "long" => ToLong(value),
         "ulong" => ToULong(value),
+        "double" => ToDouble(value),
+        "float" => ToFloat(value),
         _ => value
     };
 
@@ -194,12 +197,35 @@ internal sealed class Interpreter : IInterpreter
         _ => throw new MathError($"Invalid number {value}")
     };
 
+    private static double ToDouble(object? value) => value switch
+    {
+        int i => i,
+        uint u => u,
+        long l => l,
+        ulong ul => ul,
+        double d => d,
+        float f => f,
+        _ => throw new MathError($"Invalid number {value}")
+    };
+
+    private static float ToFloat(object? value) => value switch
+    {
+        int i => i,
+        uint u => u,
+        long l => l,
+        ulong ul => ul,
+        float f => f,
+        double d => (float)d,   // narrowing double->float (esperado)
+        _ => throw new MathError($"Invalid number {value}")
+    };
+
     private static long AsLong(object? value) => value switch
     {
         int i => i,
         uint u => u,
         long l => l,
         ulong ul => ul <= long.MaxValue ? (long)ul : throw new OverflowError("ulong don't ose same space that long"),
+        double or float => throw new OverflowError("no se puede asignar un decimal a un tipo entero"),
         _ => throw new MathError($"Invalid number {value}")
     };
 
@@ -216,7 +242,7 @@ internal sealed class Interpreter : IInterpreter
                 ? Evaluate(call.Arguments[0])
                 : null;
 
-            System.Console.WriteLine(argument);
+            System.Console.WriteLine(Stringify(argument));
             return null;
         }
 
@@ -224,8 +250,15 @@ internal sealed class Interpreter : IInterpreter
             "Llamada no soportada: por ahora solo existe 'term.out(...)'");
     }
 
-    private static string Stringify(object? value)
-        => value?.ToString() ?? "";
+    // Formatea decimales con InvariantCulture para que la salida use '.' (igual
+    // que la sintaxis de entrada) sin depender del locale del sistema.
+    private static string Stringify(object? value) => value switch
+    {
+        null => "",
+        double d => d.ToString(CultureInfo.InvariantCulture),
+        float f => f.ToString(CultureInfo.InvariantCulture),
+        _ => value.ToString() ?? ""
+    };
 
     private static object? NumericInt(TokenType op, int a, int b)
     {
@@ -327,6 +360,34 @@ internal sealed class Interpreter : IInterpreter
         }
     }
 
+    // Flotantes: semántica IEEE nativa. Sin checked ni división-por-cero especial
+    // (/0.0 -> Infinity, overflow -> Infinity, NaN es un valor válido).
+    private static object? NumericDouble(TokenType op, double a, double b) => op switch
+    {
+        TokenType.PLUS => a + b,
+        TokenType.MINUS => a - b,
+        TokenType.STAR => a * b,
+        TokenType.SLASH => a / b,
+        TokenType.GREATER => a > b,
+        TokenType.GREATER_EQUAL => a >= b,
+        TokenType.LESS => a < b,
+        TokenType.LESS_EQUAL => a <= b,
+        _ => throw new MathError("Invalid operator for double operation: " + op)
+    };
+
+    private static object? NumericFloat(TokenType op, float a, float b) => op switch
+    {
+        TokenType.PLUS => a + b,
+        TokenType.MINUS => a - b,
+        TokenType.STAR => a * b,
+        TokenType.SLASH => a / b,
+        TokenType.GREATER => a > b,
+        TokenType.GREATER_EQUAL => a >= b,
+        TokenType.LESS => a < b,
+        TokenType.LESS_EQUAL => a <= b,
+        _ => throw new MathError("Invalid operator for float operation: " + op)
+    };
+
     private object? EvaluateBinary(Binary b)
     {
         object? left = Evaluate(b.Left);
@@ -341,6 +402,14 @@ internal sealed class Interpreter : IInterpreter
         if (b.Operator == TokenType.EQUAL_EQUAL) return left!.Equals(right);
         if (b.Operator == TokenType.BANG_EQUAL) return !left!.Equals(right);
 
+        // Capa flotante: si algún operando es decimal, la operación es decimal.
+        // double gana a float; los enteros se promueven al flotante.
+        if (left is double || right is double)
+            return NumericDouble(b.Operator, ToDouble(left), ToDouble(right));
+        if (left is float || right is float)
+            return NumericFloat(b.Operator, ToFloat(left), ToFloat(right));
+
+        // Enteros: promoción por ancho máximo, gana signed.
         return (width, signed) switch
         {
             (32, true) => NumericInt(b.Operator, ToInt(left), ToInt(right)),
@@ -348,11 +417,6 @@ internal sealed class Interpreter : IInterpreter
             (64, true) => NumericLong(b.Operator, ToLong(left), ToLong(right)),
             _ => NumericUlong(b.Operator, ToULong(left), ToULong(right))
         };
-
-        //if (left is uint lu && right is uint ru)
-        //    return NumericUInt(b.Operator, lu, ru);
-
-        //return NumericInt(b.Operator, ToInt(left), ToInt(right));
     }
 
     private static int Width(object? v)

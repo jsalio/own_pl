@@ -240,6 +240,20 @@ public class ParserTests
     }
 
     [Test]
+    public void TypedDoubleAndFloatDeclarationsCarryDeclaredType()
+    {
+        Assert.That(((VarDecl)FirstStatement("double d = 1.0;")).DeclareType, Is.EqualTo("double"));
+        Assert.That(((VarDecl)FirstStatement("float f = 1.0f;")).DeclareType, Is.EqualTo("float"));
+    }
+
+    [Test]
+    public void DecimalLiteralIsDoubleAndFloatSuffixIsFloat()
+    {
+        Assert.That(((NumberLiteral)ParseExpression("3.14")).Value, Is.TypeOf<double>());
+        Assert.That(((NumberLiteral)ParseExpression("1.5f")).Value, Is.TypeOf<float>());
+    }
+
+    [Test]
     public void InferredDeclarationHasNullType()
     {
         var stmt = FirstStatement("let x = 1;");

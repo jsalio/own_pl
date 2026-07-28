@@ -30,6 +30,8 @@ internal sealed class Lexer : ILexer
         ["uint"] = TokenType.TYPE_UINT,
         ["long"] = TokenType.TYPE_LONG,
         ["ulong"] = TokenType.TYPE_ULONG,
+        ["double"] = TokenType.TYPE_DOUBLE,
+        ["float"] = TokenType.TYPE_FLOAT,
     };
 
     private readonly string source;
@@ -145,6 +147,23 @@ internal sealed class Lexer : ILexer
             Advance();
         }
 
+        // Parte fraccionaria: solo si el '.' va seguido de un dígito
+        // (así '1...3' y 'term.out' no se confunden con un decimal).
+        if (Peek() == '.' && char.IsDigit(PeekNext()))
+        {
+            Advance(); // consume el '.'
+            while (char.IsDigit(Peek()))
+            {
+                Advance();
+            }
+        }
+
+        // Sufijo de float: 3.14f o 5f
+        if (Peek() == 'f' || Peek() == 'F')
+        {
+            Advance();
+        }
+
         AddToken(TokenType.NUMBER);
     }
 
@@ -214,6 +233,12 @@ internal sealed class Lexer : ILexer
     {
         if (IsAtEnd()) return '\0';
         return source[current];
+    }
+
+    private char PeekNext()
+    {
+        if (current + 1 >= source.Length) return '\0';
+        return source[current + 1];
     }
 
     private void AddToken(TokenType type)

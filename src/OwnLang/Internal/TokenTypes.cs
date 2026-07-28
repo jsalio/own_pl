@@ -85,9 +85,10 @@ public enum TokenType
     TYPE_LONG,
     /// <summary>The <c>ulong</c> keyword (ulong type).</summary>
     TYPE_ULONG,
-    // TYPE_FLOAT,
-    // TYPE_DOUBLE,
-    // TYPE_DECIMAL,
+    /// <summary>The <c>double</c> keyword (64-bit IEEE 754 type).</summary>
+    TYPE_DOUBLE,
+    /// <summary>The <c>float</c> keyword (32-bit IEEE 754 type).</summary>
+    TYPE_FLOAT,
 
 
     //Comparison operators

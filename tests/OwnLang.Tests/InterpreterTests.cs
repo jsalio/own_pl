@@ -328,6 +328,43 @@ public class InterpreterTests
     }
 
     [Test]
+    public void DoubleDeclarationStoresValue()
+    {
+        Assert.That(RunMain(@"double d = 3.14; term.out(d);"), Is.EqualTo("3.14"));
+    }
+
+    [Test]
+    public void FloatSuffixLiteralStoresValue()
+    {
+        Assert.That(RunMain(@"float f = 1.5f; term.out(f);"), Is.EqualTo("1.5"));
+    }
+
+    [Test]
+    public void IntPromotesToDoubleInMixedOp()
+    {
+        Assert.That(Eval("2.0 + 3"), Is.EqualTo("5"));
+    }
+
+    [Test]
+    public void FloatDivisionIsNotTruncated()
+    {
+        Assert.That(Eval("7.0 / 2"), Is.EqualTo("3.5"));   // vs 7/2 = 3 (entero)
+    }
+
+    [Test]
+    public void FloatDivisionByZeroDoesNotThrow()
+    {
+        // IEEE: 1.0 / 0.0 -> Infinity, sin excepción
+        Assert.That(() => Eval("1.0 / 0.0"), Throws.Nothing);
+    }
+
+    [Test]
+    public void DecimalAssignedToIntegerThrows()
+    {
+        Assert.That(() => RunMain("int x = 3.14;"), Throws.TypeOf<OverflowError>());
+    }
+
+    [Test]
     public void DivisionByZeroThrowsMathError()
     {
         Assert.That(() => Eval("1 / 0"), Throws.TypeOf<MathError>());

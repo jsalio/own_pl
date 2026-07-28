@@ -168,6 +168,32 @@ public class LexerTests
     }
 
     [Test]
+    public void DetectDoubleAndFloatTypeKeywords()
+    {
+        Assert.That(TokenTypesOf("double"), Is.EqualTo(new[] { TokenType.TYPE_DOUBLE }));
+        Assert.That(TokenTypesOf("float"),  Is.EqualTo(new[] { TokenType.TYPE_FLOAT }));
+    }
+
+    [Test]
+    public void DecimalAndFloatLiteralsAreSingleTokens()
+    {
+        Assert.That(TokenTypesOf("3.14"), Is.EqualTo(new[] { TokenType.NUMBER }));
+        Assert.That(TokenTypesOf("1.5f"), Is.EqualTo(new[] { TokenType.NUMBER }));
+    }
+
+    [Test]
+    public void RangeIsNotConfusedWithDecimal()
+    {
+        // '1...3' debe seguir siendo NUMBER RANGE NUMBER, no un decimal
+        Assert.That(TokenTypesOf("1...3"), Is.EqualTo(new[]
+        {
+            TokenType.NUMBER,
+            TokenType.RANGE,
+            TokenType.NUMBER,
+        }));
+    }
+
+    [Test]
     public void DetectVarDeclarationSequence()
     {
         Assert.That(TokenTypesOf("let val1 = 1;"), Is.EqualTo(new[]
