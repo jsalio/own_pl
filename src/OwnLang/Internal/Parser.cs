@@ -253,8 +253,25 @@ internal sealed class Parser : IParser
 
     #region Grammar: expressions (en orden de precedencia)
 
-    // Expression -> Equality
-    private Expr Expression() => Equality();
+    // Expression -> Assignment
+    private Expr Expression() => Assignment();
+
+    // Assignment -> IDENTIFIER "=" Assignment | Equality  (lowest precedence, right-assoc)
+    private Expr Assignment()
+    {
+        Expr expr = Equality();
+
+        if (Match(TokenType.EQUAL))
+        {
+            Expr value = Assignment();
+            if (expr is Variable v)
+                return new Assign(v.Name, value);
+
+            throw new System.Exception("Destino de asignación inválido");
+        }
+
+        return expr;
+    }
 
     private Expr Equality()
     {

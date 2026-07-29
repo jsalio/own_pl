@@ -193,7 +193,7 @@ public class InterpreterTests
     {
         Assert.That(
             RunMain(@"let x = 0;
-                      loop when(x < 3) { term.out(x); let x = x + 1; }"),
+                      loop when(x < 3) { term.out(x); x = x + 1; }"),
             Is.EqualTo("0\n1\n2"));
     }
 
@@ -205,9 +205,52 @@ public class InterpreterTests
                       loop {
                           when(n == 2) { stop; }
                           term.out(n);
-                          let n = n + 1;
+                          n = n + 1;
                       }"),
             Is.EqualTo("0\n1"));
+    }
+
+    [Test]
+    public void AssignmentMutatesExistingVariable()
+    {
+        Assert.That(
+            RunMain(@"let x = 1; x = 5; term.out(x);"),
+            Is.EqualTo("5"));
+    }
+
+    [Test]
+    public void AssignmentToUndeclaredVariableThrows()
+    {
+        Assert.That(() => RunMain(@"x = 5;"), Throws.Exception);
+    }
+
+    [Test]
+    public void LetInsideBlockIsLocalAndDoesNotLeak()
+    {
+        // 'secreto' se declara dentro del when; fuera del bloque no existe.
+        Assert.That(
+            () => RunMain(@"when(true) { let secreto = 42; } term.out(secreto);"),
+            Throws.Exception);
+    }
+
+    [Test]
+    public void RangeLoopCounterDoesNotLeakAfterLoop()
+    {
+        // El contador 'i' vive en el scope del loop; afuera ya no existe.
+        Assert.That(
+            () => RunMain(@"loop[i: 1...3] { term.out(i); } term.out(i);"),
+            Throws.Exception);
+    }
+
+    [Test]
+    public void AssignmentInsideLoopReachesOuterScope()
+    {
+        // La asignación (no 'let') muta la variable declarada afuera.
+        Assert.That(
+            RunMain(@"let total = 0;
+                      loop[i: 1...3] { total = total + i; }
+                      term.out(total);"),
+            Is.EqualTo("6"));
     }
 
     [Test]

@@ -51,6 +51,15 @@ public record Variable(string Name) : Expr;
 /// <param name="Right">The right-hand operand.</param>
 public record Binary(Expr Left, TokenType Operator, Expr Right) : Expr;
 
+/// <summary>
+/// An assignment, e.g. <c>x = x + 1</c>. Evaluates <paramref name="Value"/> and
+/// stores it into the already-declared variable <paramref name="Name"/>,
+/// returning the assigned value (assignment is an expression).
+/// </summary>
+/// <param name="Name">The target variable's identifier (must already exist).</param>
+/// <param name="Value">The expression whose value is stored.</param>
+public record Assign(string Name, Expr Value) : Expr;
+
 #endregion
 
 #region Access & calls

@@ -14,7 +14,7 @@ internal sealed class Interpreter : IInterpreter
 {
     #region State
 
-    private readonly Environment environment = new();
+    private Environment environment = new();
 
     #endregion
 
@@ -62,10 +62,11 @@ internal sealed class Interpreter : IInterpreter
                 break;
 
             case Block b:
-                foreach (var inner in b.Statements)
-                {
-                    Execute(inner);
-                }
+                ExecutionBlock(b, new Environment(environment));
+                //foreach (var inner in b.Statements)
+                //{
+                //    Execute(inner);
+                //}
                 break;
 
             case WhenStmt w:
@@ -98,20 +99,48 @@ internal sealed class Interpreter : IInterpreter
 
             case RangeLoopStmt r:
                 int from = (int)Evaluate(r.From)!, to = (int)Evaluate(r.To)!;
-                try
-                {
-                    for (int index = from; index <= to; index++)
+                Environment loppEnv = new Environment(environment);
+                Environment previous = environment;
+                try {
+                    environment = loppEnv;
+                    for (int index = from; index<= to; index++)
                     {
-                        environment.Define(r.Variable, index); // expone el contador
+                        loppEnv.Define(r.Variable, index);
                         Execute(r.Body);
                     }
                 }
-                catch (BreakSignal) { }
+                catch(BreakSignal){}
+                finally{
+                    environment = previous;
+                }
+                //int from = (int)Evaluate(r.From)!, to = (int)Evaluate(r.To)!;
+                //try
+                //{
+                //    for (int index = from; index <= to; index++)
+                //    {
+                //        environment.Define(r.Variable, index); // expone el contador
+                //        Execute(r.Body);
+                //    }
+                //}
+                //catch (BreakSignal) { }
                 break;
 
             default:
                 throw new System.Exception(
                     $"Sentencia no soportada: {stmt.GetType().Name}");
+        }
+    }
+
+    private void ExecutionBlock(Block block, Environment blockEnv)
+    {
+        Environment previous = environment;
+        try{
+            environment = blockEnv;
+            foreach(var inner in block.Statements)
+                Execute(inner);
+        }
+        finally{
+            environment = previous;
         }
     }
 
@@ -126,6 +155,7 @@ internal sealed class Interpreter : IInterpreter
             NumberLiteral n => n.Value,
             StringLiteral s => s.Value,
             Variable v => environment.Get(v.Name),
+            Assign a => AssignVariable(a),
             Binary b => EvaluateBinary(b),
             Call c => EvaluateCall(c),
             BooleanLiteral b => b.Value,
@@ -133,6 +163,15 @@ internal sealed class Interpreter : IInterpreter
             _ => throw new System.Exception(
                      $"Expresión no soportada: {expr.GetType().Name}")
         };
+    }
+
+    // La asignación es una expresión: muta la variable ya declarada (subiendo la
+    // cadena de scopes) y devuelve el valor asignado.
+    private object? AssignVariable(Assign a)
+    {
+        object? value = Evaluate(a.Value);
+        environment.Assign(a.Name, value);
+        return value;
     }
 
     private object? EvaluateBinary(Binary b)
