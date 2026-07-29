@@ -257,34 +257,31 @@ internal sealed class Interpreter : IInterpreter
 
     private object? CallFunction(FunctionDecl fn, IReadOnlyList<Expr> args)
     {
-        if (args.Count != fn.Parameters.Count)
-        {
-            throw new System.Exception($"the function {fn.Name} wait {fn.Parameters.Count} args, but receive {args.Count}");
-        }
+        int count = fn.Parameters.Count;
+        if (args.Count != count)
+            throw new System.Exception(
+                $"function '{fn.Name}' expects {count} argument(s), but received {args.Count}");
 
-        //eavluate args in called context
-        var values = new object?[args.Count];
-        for (int index = 0; index < args.Count; index++)
-        {
-            values[index] = Evaluate(args[index]);
-        }
-
-        //...attached to child scope from global (lexer , not of called)
+        // Scope hijo del global (léxico), no del llamante.
         var callEnv = new Environment(globals);
-        for (int index = 0; index < fn.Parameters.Count; index++)
+
+        // Evalúa cada arg en el contexto actual y define ya coercionado:
+        // se elimina el array intermedio `values`.
+        for (int i = 0; i < count; i++)
         {
-            Param param = fn.Parameters[index];
-            callEnv.Define(param.Name, Coerce(param.Type, param.Name, values[index]));
+            Param param = fn.Parameters[i];
+            object? value = Evaluate(args[i]);
+            callEnv.Define(param.Name, Coerce(param.Type, param.Name, value));
         }
 
         object? result = null;
         Environment previous = environment;
-
+        environment = callEnv;
         try
         {
-            environment = callEnv;
-            foreach (var stmt in fn.Body.Statements)
-                Execute(stmt);
+            var body = fn.Body.Statements;
+            for (int i = 0; i < body.Count; i++)
+                Execute(body[i]);
         }
         catch (ReturnSignal signal)
         {
@@ -295,12 +292,11 @@ internal sealed class Interpreter : IInterpreter
             environment = previous;
         }
 
-        if (fn.ReturnType != "empty" && result is not null)
+        if (result is not null && fn.ReturnType != "empty")
             result = Coerce(fn.ReturnType, fn.Name, result);
 
         return result;
     }
-
     #endregion
 
     #region Numeric operations (aritmética por tipo + clasificación)
