@@ -177,7 +177,8 @@ Two families of nodes:
 | `WhileStmt` | a pre-test loop: `loop when(c) { }` |
 | `RangeLoopStmt` | a counted loop: `loop[i: 1...3] { }` |
 | `StopStmt` | break out of the innermost loop: `stop;` |
-| `FunctionDecl` | `function empty Main() { ... }` |
+| `ReturnStmt` | return from a function: `return a + b;` |
+| `FunctionDecl` | `function int suma(int a, int b) { ... }` (params are typed `Param`s) |
 | `ProgramDecl` | `def program { ... }` (root node) |
 
 ## Grammar (current version)
@@ -186,11 +187,12 @@ Two families of nodes:
 program        → "def" IDENT block
 declaration    → function | statement
 function       → "function" returnType IDENT "(" params? ")" block
-returnType     → "empty" | IDENT
-params         → IDENT ( "," IDENT )*
+returnType     → "empty" | typeName | IDENT
+params         → typeName IDENT ( "," typeName IDENT )*
 block          → "{" statement* "}"
 
-statement      → varDecl | whenStmt | loopStmt | stopStmt | exprStmt
+statement      → varDecl | whenStmt | loopStmt | stopStmt | returnStmt | exprStmt
+returnStmt     → "return" expression? ";"
 varDecl        → ( "let" | typeName ) IDENT "=" expression ";"
 typeName       → "string" | "bool" | "char"
                | "int" | "uint" | "long" | "ulong" | "double" | "float"
@@ -249,8 +251,11 @@ primary        → NUMBER | STRING | "true" | "false" | IDENT | "(" expression "
   Assignment `x = expr` mutates an existing variable (searching enclosing scopes);
   assigning to an undeclared name is an error. `let`/typed declarations always
   create a new binding in the current scope.
-- No user-defined function calls or effective parameters (the grammar accepts
-  them, but the interpreter only runs `Main` and `term.out`).
+- User-defined functions with typed parameters work: `function int suma(int a,
+  int b) { return a + b; }`, called as `suma(2, 3)`. Arguments are coerced to each
+  parameter's type, the returned value is coerced to the declared return type
+  (`empty` = void), arity is checked, and each call runs in a scope that is a child
+  of the **global** scope (lexical — a function cannot see its caller's locals).
 - `term.out` is a hardcoded shortcut, not a real object with methods.
 
 ## Roadmap
@@ -267,9 +272,9 @@ primary        → NUMBER | STRING | "true" | "false" | IDENT | "(" expression "
   literals) and `double`, `float` (IEEE, decimal/`f`-suffix literals).
 - [x] Lexical scopes: a chained `Environment` (each block opens a child scope) and
   assignment (`x = expr`, mutating an existing binding via `Assign`).
+- [x] User-defined functions with typed parameters and `return` (each call runs in
+  an `Environment` child of the global scope; `return` unwinds via `ReturnSignal`).
 - [ ] Logical operators: `&&`, `||`, `!`.
-- [ ] User-defined function calls + parameters (each call runs in an `Environment`
-  child of the global scope).
 - [ ] Real objects instead of the `term.out` shortcut.
 - [ ] Read `.own` source files and/or a REPL.
 

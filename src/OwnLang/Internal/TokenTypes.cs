@@ -26,6 +26,7 @@ public enum TokenType
     LOOP,
     /// <summary>The <c>stop</c> keyword (break out of the innermost loop).</summary>
     STOP,
+    RETURN,
 
     #endregion
 

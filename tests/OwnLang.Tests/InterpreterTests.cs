@@ -254,6 +254,78 @@ public class InterpreterTests
     }
 
     [Test]
+    public void UserFunctionReturnsValue()
+    {
+        Assert.That(
+            Run(@"def program {
+                    function empty Main() { term.out(suma(2, 3)); }
+                    function int suma(int a, int b) { return a + b; }
+                  }"),
+            Is.EqualTo("5"));
+    }
+
+    [Test]
+    public void UserFunctionArgumentsAreCoercedToParamType()
+    {
+        // El argumento se valida contra el tipo del parámetro (como una decl tipada).
+        Assert.That(
+            () => Run(@"def program {
+                          function empty Main() { term.out(f(""hola"")); }
+                          function int f(int a) { return a; }
+                        }"),
+            Throws.Exception);
+    }
+
+    [Test]
+    public void UserFunctionArityMismatchThrows()
+    {
+        Assert.That(
+            () => Run(@"def program {
+                          function empty Main() { term.out(suma(1)); }
+                          function int suma(int a, int b) { return a + b; }
+                        }"),
+            Throws.Exception);
+    }
+
+    [Test]
+    public void VoidFunctionRunsForItsEffect()
+    {
+        Assert.That(
+            Run(@"def program {
+                    function empty Main() { saluda(); }
+                    function empty saluda() { term.out(""hola""); }
+                  }"),
+            Is.EqualTo("hola"));
+    }
+
+    [Test]
+    public void FunctionScopeIsLexicalNotCallerScope()
+    {
+        // 'usa' NO ve las variables locales de 'Main': el scope de la llamada
+        // es hijo del global, no del que llama.
+        Assert.That(
+            () => Run(@"def program {
+                          function empty Main() { let secreto = 1; usa(); }
+                          function empty usa() { term.out(secreto); }
+                        }"),
+            Throws.Exception);
+    }
+
+    [Test]
+    public void ReturnExitsFunctionEarly()
+    {
+        Assert.That(
+            Run(@"def program {
+                    function empty Main() { term.out(pick(true)); }
+                    function int pick(bool b) {
+                        when(b) { return 1; }
+                        return 2;
+                    }
+                  }"),
+            Is.EqualTo("1"));
+    }
+
+    [Test]
     public void TypedStringDeclarationStoresValue()
     {
         Assert.That(

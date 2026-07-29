@@ -107,14 +107,14 @@ internal sealed class Parser : IParser
             "se esperaba el nombre de la función");
 
         Consume(TokenType.LPAREN, "se esperaba '(' después del nombre de la función");
-        var parameters = new List<string>();
+        var parameters = new List<Param>();
         if (!Check(TokenType.RPAREN))
         {
             do
             {
-                Token param = Consume(TokenType.IDENTIFIER,
-                    "se esperaba un nombre de parámetro");
-                parameters.Add(param.Lexeme);
+                string type = TypeName();
+                Token param = Consume(TokenType.IDENTIFIER, "se esperaba un nombre de parámetro");
+                parameters.Add(new Param(type, param.Lexeme));
             }
             while (Match(TokenType.COMMA));
         }
@@ -128,10 +128,23 @@ internal sealed class Parser : IParser
     private string ReturnType()
     {
         if (Match(TokenType.EMPTY)) return "empty";
+        if (Check(TokenType.IDENTIFIER)) return Advance().Lexeme;
 
-        Token type = Consume(TokenType.IDENTIFIER,
-            "se esperaba el tipo de retorno de la función");
-        return type.Lexeme;
+        return TypeName();
+    }
+
+    private string TypeName()
+    {
+        if (Match(TokenType.TYPE_STRING)) return "string";
+        if (Match(TokenType.TYPE_BOOL)) return "bool";
+        if (Match(TokenType.TYPE_CHAR)) return "char";
+        if (Match(TokenType.TYPE_INT)) return "int";
+        if (Match(TokenType.TYPE_UINT)) return "uint";
+        if (Match(TokenType.TYPE_LONG)) return "long";
+        if (Match(TokenType.TYPE_ULONG)) return "ulong";
+        if (Match(TokenType.TYPE_DOUBLE)) return "double";
+        if (Match(TokenType.TYPE_FLOAT)) return "float";
+        throw new System.Exception("se esperaba el tipo de dato");
     }
 
     #endregion
@@ -154,6 +167,7 @@ internal sealed class Parser : IParser
         if (Match(TokenType.WHEN)) return WhenStatement();
         if (Match(TokenType.LOOP)) return LoopStatement();
         if (Match(TokenType.STOP)) return StopStatement();
+        if (Match(TokenType.RETURN)) return ReturnStatement();
         return ExpressionStatement();
     }
 
@@ -223,6 +237,13 @@ internal sealed class Parser : IParser
     {
         Consume(TokenType.SEMICOLON, "se esperaba ';' después de 'stop'");
         return new StopStmt();
+    }
+
+    private Stmt ReturnStatement()
+    {
+        Expr? value = Check(TokenType.SEMICOLON) ? null : Expression();
+        Consume(TokenType.SEMICOLON, "se esperaba ';' después de 'return'");
+        return new ReturnStmt(value);
     }
 
     // ExpressionStmt -> Expression ";"

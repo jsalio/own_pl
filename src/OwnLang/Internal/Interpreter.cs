@@ -7,23 +7,41 @@ namespace Own_Lang.Internal.Contracts;
 /// Stage 3 implementation: a tree-walking interpreter. Splits traversal into
 /// <c>Evaluate</c> (for <see cref="Expr"/>, returning a value) and <c>Execute</c>
 /// (for <see cref="Stmt"/>, performing an action), both dispatching by pattern
-/// matching over the AST record types. Variables are held in a single
-/// <see cref="Environment"/>.
+/// matching over the AST record types. Variables are held in a chain of
+/// <see cref="Environment"/> scopes (each block opens a child); function calls
+/// run in a child of the global scope, and top-level functions are registered in
+/// a name table so calls can resolve them.
 /// </summary>
 internal sealed class Interpreter : IInterpreter
 {
     #region State
 
+    private readonly Environment globals = new();
     private Environment environment = new();
+    private readonly Dictionary<string, FunctionDecl> functions = new();
+
 
     #endregion
 
     #region Entry point
 
+    public Interpreter()
+    {
+        environment = globals;
+    }
+
     /// <inheritdoc/>
     public void Interpret(ProgramDecl program)
     {
         FunctionDecl? main = null;
+
+
+        foreach (var decl in program.Declarations)
+        {
+            if (decl is FunctionDecl fn)
+                functions[fn.Name] = fn;
+        }
+
         foreach (var decl in program.Declarations)
         {
             if (decl is FunctionDecl fn && fn.Name == "Main")
@@ -101,16 +119,18 @@ internal sealed class Interpreter : IInterpreter
                 int from = (int)Evaluate(r.From)!, to = (int)Evaluate(r.To)!;
                 Environment loppEnv = new Environment(environment);
                 Environment previous = environment;
-                try {
+                try
+                {
                     environment = loppEnv;
-                    for (int index = from; index<= to; index++)
+                    for (int index = from; index <= to; index++)
                     {
                         loppEnv.Define(r.Variable, index);
                         Execute(r.Body);
                     }
                 }
-                catch(BreakSignal){}
-                finally{
+                catch (BreakSignal) { }
+                finally
+                {
                     environment = previous;
                 }
                 //int from = (int)Evaluate(r.From)!, to = (int)Evaluate(r.To)!;
@@ -125,6 +145,9 @@ internal sealed class Interpreter : IInterpreter
                 //catch (BreakSignal) { }
                 break;
 
+            case ReturnStmt r:
+                throw new ReturnSignal(r.value is null ? null : Evaluate(r.value));
+
             default:
                 throw new System.Exception(
                     $"Sentencia no soportada: {stmt.GetType().Name}");
@@ -134,12 +157,14 @@ internal sealed class Interpreter : IInterpreter
     private void ExecutionBlock(Block block, Environment blockEnv)
     {
         Environment previous = environment;
-        try{
+        try
+        {
             environment = blockEnv;
-            foreach(var inner in block.Statements)
+            foreach (var inner in block.Statements)
                 Execute(inner);
         }
-        finally{
+        finally
+        {
             environment = previous;
         }
     }
@@ -222,8 +247,58 @@ internal sealed class Interpreter : IInterpreter
             return null;
         }
 
+        if (call.Callee is Variable fnRef && functions.TryGetValue(fnRef.Name, out var fn))
+            return CallFunction(fn, call.Arguments);
+
         throw new System.Exception(
             "Llamada no soportada: por ahora solo existe 'term.out(...)'");
+    }
+
+
+    private object? CallFunction(FunctionDecl fn, IReadOnlyList<Expr> args)
+    {
+        if (args.Count != fn.Parameters.Count)
+        {
+            throw new System.Exception($"the function {fn.Name} wait {fn.Parameters.Count} args, but receive {args.Count}");
+        }
+
+        //eavluate args in called context
+        var values = new object?[args.Count];
+        for (int index = 0; index < args.Count; index++)
+        {
+            values[index] = Evaluate(args[index]);
+        }
+
+        //...attached to child scope from global (lexer , not of called)
+        var callEnv = new Environment(globals);
+        for (int index = 0; index < fn.Parameters.Count; index++)
+        {
+            Param param = fn.Parameters[index];
+            callEnv.Define(param.Name, Coerce(param.Type, param.Name, values[index]));
+        }
+
+        object? result = null;
+        Environment previous = environment;
+
+        try
+        {
+            environment = callEnv;
+            foreach (var stmt in fn.Body.Statements)
+                Execute(stmt);
+        }
+        catch (ReturnSignal signal)
+        {
+            result = signal.Value;
+        }
+        finally
+        {
+            environment = previous;
+        }
+
+        if (fn.ReturnType != "empty" && result is not null)
+            result = Coerce(fn.ReturnType, fn.Name, result);
+
+        return result;
     }
 
     #endregion
@@ -319,8 +394,6 @@ internal sealed class Interpreter : IInterpreter
                 TokenType.GREATER_EQUAL => a >= b,
                 TokenType.LESS => a < b,
                 TokenType.LESS_EQUAL => a <= b,
-                // TokenType.EQUAL_EQUAL => a == b,
-                // TokenType.BANG_EQUAL => a != b,
                 _ => throw new MathError("Invalid operator for ulong operation: " + op)
             };
         }

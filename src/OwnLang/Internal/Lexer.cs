@@ -34,6 +34,7 @@ internal sealed class Lexer : ILexer
         ["ulong"] = TokenType.TYPE_ULONG,
         ["double"] = TokenType.TYPE_DOUBLE,
         ["float"] = TokenType.TYPE_FLOAT,
+        ["return"] = TokenType.RETURN,
     };
 
     private readonly string source;
