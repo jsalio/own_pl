@@ -112,8 +112,10 @@ Walks the AST with *pattern matching* over the nodes (`record`), separating:
 - `Evaluate(Expr)` → produces a value (`object?`)
 - `Execute(Stmt)` → performs an action (`void`)
 
-Variables live in an `Environment` (a `name → value` map). The `term.out(...)`
-output is wired to `Console.WriteLine` in this version.
+Variables live in an `Environment` (a `name → value` map). Environments are
+**chained**: each one has an optional enclosing parent, every block opens a child
+scope, and name lookup/assignment walks up the chain. The `term.out(...)` output
+is wired to `Console.WriteLine` in this version.
 
 ## Project structure
 
@@ -159,6 +161,7 @@ Two families of nodes:
 | `BooleanLiteral` | a boolean: `true`, `false` |
 | `Variable` | a reference to a name: `val1` |
 | `Binary` | a binary operation: `val1 + val2`, `a == b`, `x < 3` |
+| `Assign` | an assignment to an existing variable: `x = x + 1` |
 | `MemberAccess` | member access: `term.out` |
 | `Call` | a call: `out(result)` |
 
@@ -174,7 +177,8 @@ Two families of nodes:
 | `WhileStmt` | a pre-test loop: `loop when(c) { }` |
 | `RangeLoopStmt` | a counted loop: `loop[i: 1...3] { }` |
 | `StopStmt` | break out of the innermost loop: `stop;` |
-| `FunctionDecl` | `function empty Main() { ... }` |
+| `ReturnStmt` | return from a function: `return a + b;` |
+| `FunctionDecl` | `function int suma(int a, int b) { ... }` (params are typed `Param`s) |
 | `ProgramDecl` | `def program { ... }` (root node) |
 
 ## Grammar (current version)
@@ -183,11 +187,12 @@ Two families of nodes:
 program        → "def" IDENT block
 declaration    → function | statement
 function       → "function" returnType IDENT "(" params? ")" block
-returnType     → "empty" | IDENT
-params         → IDENT ( "," IDENT )*
+returnType     → "empty" | typeName | IDENT
+params         → typeName IDENT ( "," typeName IDENT )*
 block          → "{" statement* "}"
 
-statement      → varDecl | whenStmt | loopStmt | stopStmt | exprStmt
+statement      → varDecl | whenStmt | loopStmt | stopStmt | returnStmt | exprStmt
+returnStmt     → "return" expression? ";"
 varDecl        → ( "let" | typeName ) IDENT "=" expression ";"
 typeName       → "string" | "bool" | "char"
                | "int" | "uint" | "long" | "ulong" | "double" | "float"
@@ -197,7 +202,8 @@ loopStmt       → "loop" ( "[" IDENT ":" expression "..." expression "]"
 stopStmt       → "stop" ";"
 exprStmt       → expression ";"
 
-expression     → equality
+expression     → assignment
+assignment     → IDENT "=" assignment | equality
 equality       → comparison ( ( "==" | "!=" ) comparison )*
 comparison     → additive ( ( "<" | "<=" | ">" | ">=" ) additive )*
 additive       → multiplicative ( ( "+" | "-" ) multiplicative )*
@@ -240,8 +246,16 @@ primary        → NUMBER | STRING | "true" | "false" | IDENT | "(" expression "
 - Conditionals (`when` / `else` / `else when`) and loops (`loop`, `loop when`,
   `loop[i: 1...3]`, with `stop`) exist. Conditions must be booleans (no
   truthiness coercion). `stop` outside a loop is an unhandled error.
-- No user-defined function calls or effective parameters (the grammar accepts
-  them, but the interpreter only runs `Main` and `term.out`).
+- Scopes are lexical: every block (`when`/loop body, function body) opens a child
+  scope, so a `let` inside a block is local to it and dies when the block ends.
+  Assignment `x = expr` mutates an existing variable (searching enclosing scopes);
+  assigning to an undeclared name is an error. `let`/typed declarations always
+  create a new binding in the current scope.
+- User-defined functions with typed parameters work: `function int suma(int a,
+  int b) { return a + b; }`, called as `suma(2, 3)`. Arguments are coerced to each
+  parameter's type, the returned value is coerced to the declared return type
+  (`empty` = void), arity is checked, and each call runs in a scope that is a child
+  of the **global** scope (lexical — a function cannot see its caller's locals).
 - `term.out` is a hardcoded shortcut, not a real object with methods.
 
 ## Roadmap
@@ -256,8 +270,11 @@ primary        → NUMBER | STRING | "true" | "false" | IDENT | "(" expression "
 - [x] Type system (dynamic): `string`, `bool`, `char`, and the full numeric family
   — `int`, `uint`, `long`, `ulong` (checked, width/signed promotion, auto-widening
   literals) and `double`, `float` (IEEE, decimal/`f`-suffix literals).
+- [x] Lexical scopes: a chained `Environment` (each block opens a child scope) and
+  assignment (`x = expr`, mutating an existing binding via `Assign`).
+- [x] User-defined functions with typed parameters and `return` (each call runs in
+  an `Environment` child of the global scope; `return` unwinds via `ReturnSignal`).
 - [ ] Logical operators: `&&`, `||`, `!`.
-- [ ] User-defined function calls + parameters (a chained `Environment` per scope).
 - [ ] Real objects instead of the `term.out` shortcut.
 - [ ] Read `.own` source files and/or a REPL.
 

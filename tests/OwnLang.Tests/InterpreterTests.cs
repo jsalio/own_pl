@@ -193,7 +193,7 @@ public class InterpreterTests
     {
         Assert.That(
             RunMain(@"let x = 0;
-                      loop when(x < 3) { term.out(x); let x = x + 1; }"),
+                      loop when(x < 3) { term.out(x); x = x + 1; }"),
             Is.EqualTo("0\n1\n2"));
     }
 
@@ -205,9 +205,124 @@ public class InterpreterTests
                       loop {
                           when(n == 2) { stop; }
                           term.out(n);
-                          let n = n + 1;
+                          n = n + 1;
                       }"),
             Is.EqualTo("0\n1"));
+    }
+
+    [Test]
+    public void AssignmentMutatesExistingVariable()
+    {
+        Assert.That(
+            RunMain(@"let x = 1; x = 5; term.out(x);"),
+            Is.EqualTo("5"));
+    }
+
+    [Test]
+    public void AssignmentToUndeclaredVariableThrows()
+    {
+        Assert.That(() => RunMain(@"x = 5;"), Throws.Exception);
+    }
+
+    [Test]
+    public void LetInsideBlockIsLocalAndDoesNotLeak()
+    {
+        // 'secreto' se declara dentro del when; fuera del bloque no existe.
+        Assert.That(
+            () => RunMain(@"when(true) { let secreto = 42; } term.out(secreto);"),
+            Throws.Exception);
+    }
+
+    [Test]
+    public void RangeLoopCounterDoesNotLeakAfterLoop()
+    {
+        // El contador 'i' vive en el scope del loop; afuera ya no existe.
+        Assert.That(
+            () => RunMain(@"loop[i: 1...3] { term.out(i); } term.out(i);"),
+            Throws.Exception);
+    }
+
+    [Test]
+    public void AssignmentInsideLoopReachesOuterScope()
+    {
+        // La asignación (no 'let') muta la variable declarada afuera.
+        Assert.That(
+            RunMain(@"let total = 0;
+                      loop[i: 1...3] { total = total + i; }
+                      term.out(total);"),
+            Is.EqualTo("6"));
+    }
+
+    [Test]
+    public void UserFunctionReturnsValue()
+    {
+        Assert.That(
+            Run(@"def program {
+                    function empty Main() { term.out(suma(2, 3)); }
+                    function int suma(int a, int b) { return a + b; }
+                  }"),
+            Is.EqualTo("5"));
+    }
+
+    [Test]
+    public void UserFunctionArgumentsAreCoercedToParamType()
+    {
+        // El argumento se valida contra el tipo del parámetro (como una decl tipada).
+        Assert.That(
+            () => Run(@"def program {
+                          function empty Main() { term.out(f(""hola"")); }
+                          function int f(int a) { return a; }
+                        }"),
+            Throws.Exception);
+    }
+
+    [Test]
+    public void UserFunctionArityMismatchThrows()
+    {
+        Assert.That(
+            () => Run(@"def program {
+                          function empty Main() { term.out(suma(1)); }
+                          function int suma(int a, int b) { return a + b; }
+                        }"),
+            Throws.Exception);
+    }
+
+    [Test]
+    public void VoidFunctionRunsForItsEffect()
+    {
+        Assert.That(
+            Run(@"def program {
+                    function empty Main() { saluda(); }
+                    function empty saluda() { term.out(""hola""); }
+                  }"),
+            Is.EqualTo("hola"));
+    }
+
+    [Test]
+    public void FunctionScopeIsLexicalNotCallerScope()
+    {
+        // 'usa' NO ve las variables locales de 'Main': el scope de la llamada
+        // es hijo del global, no del que llama.
+        Assert.That(
+            () => Run(@"def program {
+                          function empty Main() { let secreto = 1; usa(); }
+                          function empty usa() { term.out(secreto); }
+                        }"),
+            Throws.Exception);
+    }
+
+    [Test]
+    public void ReturnExitsFunctionEarly()
+    {
+        Assert.That(
+            Run(@"def program {
+                    function empty Main() { term.out(pick(true)); }
+                    function int pick(bool b) {
+                        when(b) { return 1; }
+                        return 2;
+                    }
+                  }"),
+            Is.EqualTo("1"));
     }
 
     [Test]

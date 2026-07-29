@@ -24,12 +24,12 @@ public record ProgramDecl(string Name, IReadOnlyList<Stmt> Declarations) : Stmt;
 /// </summary>
 /// <param name="ReturnType">The declared return type (e.g. <c>empty</c>).</param>
 /// <param name="Name">The function's name (e.g. <c>Main</c>).</param>
-/// <param name="Parameters">The parameter names, in order (may be empty).</param>
+/// <param name="Parameters">the typed parameters, in order</param>
 /// <param name="Body">The function body.</param>
 public record FunctionDecl(
     string ReturnType,
     string Name,
-    IReadOnlyList<string> Parameters,
+    IReadOnlyList<Param> Parameters,
     Block Body) : Stmt;
 
 /// <summary>
@@ -94,5 +94,19 @@ public record RangeLoopStmt(string Variable, Expr From, Expr To, Block Body) : S
 
 /// <summary>Breaks out of the innermost enclosing loop: <c>stop;</c>.</summary>
 public record StopStmt : Stmt;
+
+
+#endregion
+
+#region Type-related AST nodes
+
+/// <summary>A typed function parameter, e.g. <c>int a</c>.</summary>
+/// <param name="Type">The declared type name (e.g. <c>int</c>).</param>
+/// <param name="Name">The parameter's identifier.</param>
+public record Param(string Type, string Name);
+
+/// <summary>A return: <c>return expr;</c> or bare <c>return;</c>.</summary>
+/// <param name="value">The returned expression, or null for a valueless return.</param>
+public record ReturnStmt(Expr? value) : Stmt;
 
 #endregion

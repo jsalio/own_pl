@@ -7,23 +7,41 @@ namespace Own_Lang.Internal.Contracts;
 /// Stage 3 implementation: a tree-walking interpreter. Splits traversal into
 /// <c>Evaluate</c> (for <see cref="Expr"/>, returning a value) and <c>Execute</c>
 /// (for <see cref="Stmt"/>, performing an action), both dispatching by pattern
-/// matching over the AST record types. Variables are held in a single
-/// <see cref="Environment"/>.
+/// matching over the AST record types. Variables are held in a chain of
+/// <see cref="Environment"/> scopes (each block opens a child); function calls
+/// run in a child of the global scope, and top-level functions are registered in
+/// a name table so calls can resolve them.
 /// </summary>
 internal sealed class Interpreter : IInterpreter
 {
     #region State
 
-    private readonly Environment environment = new();
+    private readonly Environment globals = new();
+    private Environment environment = new();
+    private readonly Dictionary<string, FunctionDecl> functions = new();
+
 
     #endregion
 
     #region Entry point
 
+    public Interpreter()
+    {
+        environment = globals;
+    }
+
     /// <inheritdoc/>
     public void Interpret(ProgramDecl program)
     {
         FunctionDecl? main = null;
+
+
+        foreach (var decl in program.Declarations)
+        {
+            if (decl is FunctionDecl fn)
+                functions[fn.Name] = fn;
+        }
+
         foreach (var decl in program.Declarations)
         {
             if (decl is FunctionDecl fn && fn.Name == "Main")
@@ -62,10 +80,11 @@ internal sealed class Interpreter : IInterpreter
                 break;
 
             case Block b:
-                foreach (var inner in b.Statements)
-                {
-                    Execute(inner);
-                }
+                ExecutionBlock(b, new Environment(environment));
+                //foreach (var inner in b.Statements)
+                //{
+                //    Execute(inner);
+                //}
                 break;
 
             case WhenStmt w:
@@ -98,20 +117,55 @@ internal sealed class Interpreter : IInterpreter
 
             case RangeLoopStmt r:
                 int from = (int)Evaluate(r.From)!, to = (int)Evaluate(r.To)!;
+                Environment loppEnv = new Environment(environment);
+                Environment previous = environment;
                 try
                 {
+                    environment = loppEnv;
                     for (int index = from; index <= to; index++)
                     {
-                        environment.Define(r.Variable, index); // expone el contador
+                        loppEnv.Define(r.Variable, index);
                         Execute(r.Body);
                     }
                 }
                 catch (BreakSignal) { }
+                finally
+                {
+                    environment = previous;
+                }
+                //int from = (int)Evaluate(r.From)!, to = (int)Evaluate(r.To)!;
+                //try
+                //{
+                //    for (int index = from; index <= to; index++)
+                //    {
+                //        environment.Define(r.Variable, index); // expone el contador
+                //        Execute(r.Body);
+                //    }
+                //}
+                //catch (BreakSignal) { }
                 break;
+
+            case ReturnStmt r:
+                throw new ReturnSignal(r.value is null ? null : Evaluate(r.value));
 
             default:
                 throw new System.Exception(
                     $"Sentencia no soportada: {stmt.GetType().Name}");
+        }
+    }
+
+    private void ExecutionBlock(Block block, Environment blockEnv)
+    {
+        Environment previous = environment;
+        try
+        {
+            environment = blockEnv;
+            foreach (var inner in block.Statements)
+                Execute(inner);
+        }
+        finally
+        {
+            environment = previous;
         }
     }
 
@@ -126,6 +180,7 @@ internal sealed class Interpreter : IInterpreter
             NumberLiteral n => n.Value,
             StringLiteral s => s.Value,
             Variable v => environment.Get(v.Name),
+            Assign a => AssignVariable(a),
             Binary b => EvaluateBinary(b),
             Call c => EvaluateCall(c),
             BooleanLiteral b => b.Value,
@@ -133,6 +188,15 @@ internal sealed class Interpreter : IInterpreter
             _ => throw new System.Exception(
                      $"Expresión no soportada: {expr.GetType().Name}")
         };
+    }
+
+    // La asignación es una expresión: muta la variable ya declarada (subiendo la
+    // cadena de scopes) y devuelve el valor asignado.
+    private object? AssignVariable(Assign a)
+    {
+        object? value = Evaluate(a.Value);
+        environment.Assign(a.Name, value);
+        return value;
     }
 
     private object? EvaluateBinary(Binary b)
@@ -183,10 +247,56 @@ internal sealed class Interpreter : IInterpreter
             return null;
         }
 
+        if (call.Callee is Variable fnRef && functions.TryGetValue(fnRef.Name, out var fn))
+            return CallFunction(fn, call.Arguments);
+
         throw new System.Exception(
             "Llamada no soportada: por ahora solo existe 'term.out(...)'");
     }
 
+
+    private object? CallFunction(FunctionDecl fn, IReadOnlyList<Expr> args)
+    {
+        int count = fn.Parameters.Count;
+        if (args.Count != count)
+            throw new System.Exception(
+                $"function '{fn.Name}' expects {count} argument(s), but received {args.Count}");
+
+        // Scope hijo del global (léxico), no del llamante.
+        var callEnv = new Environment(globals);
+
+        // Evalúa cada arg en el contexto actual y define ya coercionado:
+        // se elimina el array intermedio `values`.
+        for (int i = 0; i < count; i++)
+        {
+            Param param = fn.Parameters[i];
+            object? value = Evaluate(args[i]);
+            callEnv.Define(param.Name, Coerce(param.Type, param.Name, value));
+        }
+
+        object? result = null;
+        Environment previous = environment;
+        environment = callEnv;
+        try
+        {
+            var body = fn.Body.Statements;
+            for (int i = 0; i < body.Count; i++)
+                Execute(body[i]);
+        }
+        catch (ReturnSignal signal)
+        {
+            result = signal.Value;
+        }
+        finally
+        {
+            environment = previous;
+        }
+
+        if (result is not null && fn.ReturnType != "empty")
+            result = Coerce(fn.ReturnType, fn.Name, result);
+
+        return result;
+    }
     #endregion
 
     #region Numeric operations (aritmética por tipo + clasificación)
@@ -280,8 +390,6 @@ internal sealed class Interpreter : IInterpreter
                 TokenType.GREATER_EQUAL => a >= b,
                 TokenType.LESS => a < b,
                 TokenType.LESS_EQUAL => a <= b,
-                // TokenType.EQUAL_EQUAL => a == b,
-                // TokenType.BANG_EQUAL => a != b,
                 _ => throw new MathError("Invalid operator for ulong operation: " + op)
             };
         }
