@@ -60,6 +60,23 @@ public record Binary(Expr Left, TokenType Operator, Expr Right) : Expr;
 /// <param name="Value">The expression whose value is stored.</param>
 public record Assign(string Name, Expr Value) : Expr;
 
+/// <summary>
+/// A short-circuiting logical operation, e.g. <c>a && b</c> or <c>a || b</c>.
+/// Kept separate from <see cref="Binary"/> because the right operand is only
+/// evaluated when the operator cannot decide from the left one.
+/// </summary>
+/// <param name="Left">The left-hand operand (a boolean).</param>
+/// <param name="Operator">The operator token type (<c>AND</c> or <c>OR</c>).</param>
+/// <param name="Right">The right-hand operand (a boolean), evaluated lazily.</param>
+public record Logical(Expr Left, TokenType Operator, Expr Right) : Expr;
+
+/// <summary>
+/// A unary prefix operation, e.g. <c>!flag</c>.
+/// </summary>
+/// <param name="Operator">The operator token type (<c>BANG</c>).</param>
+/// <param name="Right">The operand the operator applies to.</param>
+public record Unary(TokenType Operator, Expr Right) : Expr;
+
 #endregion
 
 #region Access & calls
@@ -79,5 +96,7 @@ public record MemberAccess(Expr Object, string Member) : Expr;
 /// <param name="Callee">The expression being invoked.</param>
 /// <param name="Arguments">The argument expressions, in order (may be empty).</param>
 public record Call(Expr Callee, IReadOnlyList<Expr> Arguments) : Expr;
+
+
 
 #endregion

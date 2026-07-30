@@ -90,6 +90,8 @@ internal sealed class Lexer : ILexer
             case '!': AddToken(Match('=') ? TokenType.BANG_EQUAL : TokenType.BANG); break;
             case '<': AddToken(Match('=') ? TokenType.LESS_EQUAL : TokenType.LESS); break;
             case '>': AddToken(Match('=') ? TokenType.GREATER_EQUAL : TokenType.GREATER); break;
+            // case '&': AddToken(Match('&') ? TokenType.AND : TokenType.AND); break;
+            // case '|': AddToken(Match('|') ? TokenType.OR : TokenType.OR); break;
             case '+': AddToken(TokenType.PLUS); break;
             case '-': AddToken(TokenType.MINUS); break;
             case '.':
@@ -131,6 +133,18 @@ internal sealed class Lexer : ILexer
 
             case CHARDEFINITION:
                 Char();
+                break;
+
+            case '&':
+                if (!Match('&'))
+                    throw new System.Exception("se esperaba '&&' en la línea " + line + ", columna " + column);
+                AddToken(TokenType.AND);
+                break;
+
+            case '|':
+                if (!Match('|'))
+                    throw new Exception("se esperaba '||' en la línea " + line + ", columna " + column);
+                AddToken(TokenType.OR);
                 break;
 
             default:

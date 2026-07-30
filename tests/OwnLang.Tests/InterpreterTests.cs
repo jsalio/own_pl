@@ -326,6 +326,60 @@ public class InterpreterTests
     }
 
     [Test]
+    public void LogicalAndEvaluates()
+    {
+        Assert.That(Eval("true && false"), Is.EqualTo("False"));
+        Assert.That(Eval("true && true"), Is.EqualTo("True"));
+    }
+
+    [Test]
+    public void LogicalOrEvaluates()
+    {
+        Assert.That(Eval("false || true"), Is.EqualTo("True"));
+        Assert.That(Eval("false || false"), Is.EqualTo("False"));
+    }
+
+    [Test]
+    public void LogicalNotEvaluates()
+    {
+        Assert.That(Eval("!true"), Is.EqualTo("False"));
+        Assert.That(Eval("!false"), Is.EqualTo("True"));
+    }
+
+    [Test]
+    public void LogicalAndShortCircuitsAndSkipsRightSide()
+    {
+        // La derecha (1/0) haría MathError; el cortocircuito la evita porque left es false.
+        Assert.That(Eval("false && (1 / 0 == 1)"), Is.EqualTo("False"));
+    }
+
+    [Test]
+    public void LogicalOrShortCircuitsAndSkipsRightSide()
+    {
+        Assert.That(Eval("true || (1 / 0 == 1)"), Is.EqualTo("True"));
+    }
+
+    [Test]
+    public void LogicalOperandsMustBeBoolean()
+    {
+        Assert.That(() => Eval("5 && true"), Throws.Exception);
+    }
+
+    [Test]
+    public void LogicalAndBindsTighterThanOr()
+    {
+        // true || (false && false) -> true (&& antes que ||)
+        Assert.That(Eval("true || false && false"), Is.EqualTo("True"));
+    }
+
+    [Test]
+    public void NotBindsTighterThanEquality()
+    {
+        // (!true) == false -> false == false -> true
+        Assert.That(Eval("!true == false"), Is.EqualTo("True"));
+    }
+
+    [Test]
     public void TypedStringDeclarationStoresValue()
     {
         Assert.That(
