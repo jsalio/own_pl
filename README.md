@@ -15,8 +15,8 @@ def program {
         let val1 = 1;
         let val2 = 2;
         let result = val1 + val2;
-        term.out("resultado:");
-        term.out(result);
+        Term.out("resultado:");
+        Term.out(result);
     }
 }
 ```
@@ -56,7 +56,7 @@ fixture per pipeline stage:
 |---|---|
 | `LexerTests` | text → tokens (`DetectString`, `DetectVals`, `DetectCodeBlock`, keywords, operators, errors) |
 | `ParserTests` | tokens → AST (precedence, associativity, call shape, syntax errors) |
-| `InterpreterTests` | end-to-end execution (arithmetic, precedence, variables, `term.out` output) |
+| `InterpreterTests` | end-to-end execution (arithmetic, precedence, variables, `Term.out` output) |
 | `EnvironmentTests` | the runtime variable store |
 
 ```bash
@@ -65,7 +65,7 @@ dotnet test --filter FullyQualifiedName~LexerTests   # one fixture
 dotnet test --filter Name=DetectString               # one test
 ```
 
-`InterpreterTests` verify behavior end-to-end and capture `term.out` output by
+`InterpreterTests` verify behavior end-to-end and capture `Term.out` output by
 redirecting `Console.Out`. The suite accesses the interpreter's `internal` types
 through `InternalsVisibleTo` declared in `src/OwnLang/OwnLang.csproj`.
 
@@ -114,7 +114,7 @@ Walks the AST with *pattern matching* over the nodes (`record`), separating:
 
 Variables live in an `Environment` (a `name → value` map). Environments are
 **chained**: each one has an optional enclosing parent, every block opens a child
-scope, and name lookup/assignment walks up the chain. The `term.out(...)` output
+scope, and name lookup/assignment walks up the chain. The `Term.out(...)` output
 is wired to `Console.WriteLine` in this version.
 
 ## Project structure
@@ -164,7 +164,7 @@ Two families of nodes:
 | `Logical` | a short-circuiting logical op: `a && b`, `a \|\| b` |
 | `Unary` | a unary prefix op: `!flag` |
 | `Assign` | an assignment to an existing variable: `x = x + 1` |
-| `MemberAccess` | member access: `term.out` |
+| `MemberAccess` | member access: `Term.out` |
 | `Call` | a call: `out(result)` |
 
 **Statements** (`Stmt`) — "what does it execute?":
@@ -172,7 +172,7 @@ Two families of nodes:
 | Node | Represents |
 |---|---|
 | `VarDecl` | `let val1 = 1;` |
-| `ExpressionStmt` | an expression used as a statement: `term.out(...);` |
+| `ExpressionStmt` | an expression used as a statement: `Term.out(...);` |
 | `Block` | a block `{ ... }` |
 | `WhenStmt` | a conditional: `when(c) { } else { }` |
 | `LoopStmt` | an infinite loop: `loop { }` |
@@ -180,13 +180,22 @@ Two families of nodes:
 | `RangeLoopStmt` | a counted loop: `loop[i: 1...3] { }` |
 | `StopStmt` | break out of the innermost loop: `stop;` |
 | `ReturnStmt` | return from a function: `return a + b;` |
-| `FunctionDecl` | `function int suma(int a, int b) { ... }` (params are typed `Param`s) |
-| `ProgramDecl` | `def program { ... }` (root node) |
+| `FunctionDecl` | `function int suma(int a, int b) { ... }` (params are typed `Param`s; `IsExternal` marks a native binding) |
+| `ProgramDecl` | `def program { ... }` (the program that holds `Main`) |
+| `ContractDecl` | `def contract ITerminal { function empty out(string m); }` (interface: a list of `FunctionSig`) |
+| `ModuleDecl` | `def module Term : ITerminal { ... }` (implementation; functions are `external` or language-bodied) |
+| `CompilationUnit` | the AST root: the program plus its sibling contracts and modules |
 
 ## Grammar (current version)
 
 ```
-program        → "def" IDENT block
+compilationUnit → topLevel* EOF
+topLevel        → "def" ( program | contract | module )
+program         → IDENT block
+contract        → "contract" IDENT "{" functionSig* "}"
+module          → "module" IDENT ( ":" IDENT )? "{" moduleFunction* "}"
+functionSig     → "function" returnType IDENT "(" params? ")" ";"
+moduleFunction  → "external"? "function" returnType IDENT "(" params? ")" ( block | ";" )
 declaration    → function | statement
 function       → "function" returnType IDENT "(" params? ")" block
 returnType     → "empty" | typeName | IDENT
@@ -220,9 +229,10 @@ primary        → NUMBER | STRING | "true" | "false" | IDENT | "(" expression "
 
 ## Execution conventions
 
-- The interpreter looks for the `Main` function inside `def` and executes its body.
-- `term.out(x)` prints `x` to the console (hardcoded special case; there is no
-  real object system yet).
+- The interpreter looks for the `Main` function inside `def program` and executes its body.
+- `Term.out(x)` prints `x` to the console. `Term` is a built-in **module** with an
+  `external` function `out` bound to a native (C#) implementation — no longer a
+  hardcoded call-site special case.
 
 ## Current limitations
 
@@ -264,7 +274,13 @@ primary        → NUMBER | STRING | "true" | "false" | IDENT | "(" expression "
   parameter's type, the returned value is coerced to the declared return type
   (`empty` = void), arity is checked, and each call runs in a scope that is a child
   of the **global** scope (lexical — a function cannot see its caller's locals).
-- `term.out` is a hardcoded shortcut, not a real object with methods.
+- Contracts and modules exist as **static namespaces**: `def contract IName { ... }`
+  declares signatures; `def module Name : IName { ... }` implements them (validated at
+  registration). A module's function is either `external` (bound to a native C#
+  implementation, e.g. `Term.out`) or written in the language. `Module.func(...)` is
+  resolved statically by name — modules are not yet first-class values (no
+  `let t: IName = Term;`, no dynamic dispatch). `external` parameter types are the
+  contract shape; they are not coerced at the call (the native marshals its own args).
 
 ## Roadmap
 
@@ -284,7 +300,12 @@ primary        → NUMBER | STRING | "true" | "false" | IDENT | "(" expression "
   an `Environment` child of the global scope; `return` unwinds via `ReturnSignal`).
 - [x] Logical operators: `&&`, `||` (short-circuiting, via a `Logical` node) and
   unary `!` (via a `Unary` node), with `logicOr`/`logicAnd`/`unary` precedence levels.
-- [ ] Real objects instead of the `term.out` shortcut.
+- [x] Standard library v1: `def contract` / `def module` / `external` functions.
+  `Term` is now a built-in module (`external out` bound to a native), replacing the
+  hardcoded `Term.out` shortcut. Static namespace resolution; contracts validated.
+- [ ] Modules as first-class values + dynamic dispatch by contract
+  (`let t: ITerminal = Term;`).
+- [ ] A prelude written in `.own` that declares the built-in modules (needs file reading).
 - [ ] Read `.own` source files and/or a REPL.
 
 ## Reference

@@ -53,31 +53,44 @@ internal sealed class Parser : IParser
     }
 
     /// <inheritdoc/>
-    public ProgramDecl Parse()
+    public CompilationUnit Parse()
     {
-        ProgramDecl program = Program();
+        ProgramDecl? program = null;
+        var contracts = new List<ContractDecl>();
+        var modules = new List<ModuleDecl>();
 
-        // No usamos Consume(EOF) porque Check() se corta con IsAtEnd():
-        // Check(EOF) siempre daría false. Verificamos el fin directamente.
-        if (!IsAtEnd())
+        while (!IsAtEnd())
         {
-            Token token = Peek();
-            throw new System.Exception(
-                $"Error de sintaxis: se esperaba el final del programa, se encontró " +
-                $"'{token.Lexeme}' ({token.Type}) en la línea {token.Line}, columna {token.Column}");
+            var token = Consume(TokenType.DEF, "se esperaba 'def' al inicio del programa");
+            if (Match(TokenType.CONTRACT))
+            {
+                contracts.Add(ContractDeclaration());
+            }
+            else if (Match(TokenType.MODULE))
+            {
+                modules.Add(ModuleDeclaration());
+            }
+            else
+            {
+                if (program is not null)
+                    throw new System.Exception("Solo puede haber un programa");
+                program = Program();
+            }
         }
 
-        return program;
+        if (program is null)
+            throw new System.Exception("se esperaba un programa");
+        return new CompilationUnit(program, contracts, modules);
+
     }
 
     #endregion
 
     #region Grammar: declarations
 
-    // Program -> "def" IDENTIFIER "{" Declaration* "}"
+    // Program -> IDENTIFIER "{" Declaration* "}"   ("def" ya consumido por Parse)
     private ProgramDecl Program()
     {
-        Consume(TokenType.DEF, "se esperaba 'def' al inicio del programa");
         Token name = Consume(TokenType.IDENTIFIER,
             "se esperaba el nombre del programa después de 'def'");
         Consume(TokenType.LBRACE, "se esperaba '{' después del nombre del programa");
@@ -90,6 +103,77 @@ internal sealed class Parser : IParser
 
         Consume(TokenType.RBRACE, "se esperaba '}' para cerrar el programa");
         return new ProgramDecl(name.Lexeme, declarations);
+    }
+
+    // contract -> IDENTIFIER "{" functionSig* "}"   ("contract" ya consumido)
+    private ContractDecl ContractDeclaration()
+    {
+        Token name = Consume(TokenType.IDENTIFIER,
+            "se esperaba el nombre del contrato después de 'contract'");
+        Consume(TokenType.LBRACE, "se esperaba '{' después del nombre del contrato");
+
+        var members = new List<FunctionSig>();
+        while (!Check(TokenType.RBRACE) && !IsAtEnd())
+            members.Add(FunctionSignature());
+
+        Consume(TokenType.RBRACE, "se esperaba '}' para cerrar el contrato");
+        return new ContractDecl(name.Lexeme, members);
+    }
+
+    // functionSig -> "function" returnType IDENTIFIER "(" params ")" ";"
+    private FunctionSig FunctionSignature()
+    {
+        Consume(TokenType.FUNCTION, "se esperaba 'function' en la firma del contrato");
+        string returnType = ReturnType();
+        Token name = Consume(TokenType.IDENTIFIER,
+            "se esperaba el nombre de la función");
+        var parameters = ParameterList();
+        Consume(TokenType.SEMICOLON, "se esperaba ';' al final de la firma del contrato");
+        return new FunctionSig(returnType, name.Lexeme, parameters);
+    }
+
+    // module -> IDENTIFIER ( ":" IDENTIFIER )? "{" moduleFunction* "}"   ("module" ya consumido)
+    private ModuleDecl ModuleDeclaration()
+    {
+        Token name = Consume(TokenType.IDENTIFIER,
+                    "se esperaba el nombre del módulo después de 'module'");
+
+        string? contract = null;
+        if (Match(TokenType.COLON))
+            contract = Consume(TokenType.IDENTIFIER,
+                "se esperaba el nombre del contrato después de ':'").Lexeme;
+
+        Consume(TokenType.LBRACE, "se esperaba '{' después del encabezado del módulo");
+
+        var functions = new List<FunctionDecl>();
+        while (!Check(TokenType.RBRACE) && !IsAtEnd())
+            functions.Add(ModuleFunction());
+
+        Consume(TokenType.RBRACE, "se esperaba '}' para cerrar el módulo");
+        return new ModuleDecl(name.Lexeme, contract, functions);
+    }
+
+    // moduleFunction -> "external" "function" returnType IDENT "(" params ")" ";"
+    //                 | "function" returnType IDENT "(" params ")" block
+    private FunctionDecl ModuleFunction()
+    {
+        bool isExternal = Match(TokenType.EXTERNAL);
+        Consume(TokenType.FUNCTION, "se esperaba 'function'");
+        string returnType = ReturnType();
+        Token name = Consume(TokenType.IDENTIFIER,
+            "se esperaba el nombre de la función");
+        var parameters = ParameterList();
+
+        if (isExternal)
+        {
+            Consume(TokenType.SEMICOLON,
+                "se esperaba ';' después de una función 'external'");
+            return new FunctionDecl(returnType, name.Lexeme, parameters,
+                new Block(new List<Stmt>()), IsExternal: true);
+        }
+
+        Block body = Block();
+        return new FunctionDecl(returnType, name.Lexeme, parameters, body);
     }
 
     // Declaration -> Function | Statement
@@ -107,6 +191,14 @@ internal sealed class Parser : IParser
         Token name = Consume(TokenType.IDENTIFIER,
             "se esperaba el nombre de la función");
 
+        var parameters = ParameterList();
+
+        Block body = Block();
+        return new FunctionDecl(returnType, name.Lexeme, parameters, body);
+    }
+
+    private List<Param> ParameterList()
+    {
         Consume(TokenType.LPAREN, "se esperaba '(' después del nombre de la función");
         var parameters = new List<Param>();
         if (!Check(TokenType.RPAREN))
@@ -114,15 +206,14 @@ internal sealed class Parser : IParser
             do
             {
                 string type = TypeName();
-                Token param = Consume(TokenType.IDENTIFIER, "se esperaba un nombre de parámetro");
+                Token param = Consume(TokenType.IDENTIFIER,
+                    "se esperaba un nombre de parámetro");
                 parameters.Add(new Param(type, param.Lexeme));
             }
             while (Match(TokenType.COMMA));
         }
         Consume(TokenType.RPAREN, "se esperaba ')' después de los parámetros");
-
-        Block body = Block();
-        return new FunctionDecl(returnType, name.Lexeme, parameters, body);
+        return parameters;
     }
 
     // returnType -> "empty" | IDENTIFIER   (tipos con nombre, para el futuro)

@@ -12,8 +12,8 @@ public abstract record Stmt;
 #region Declarations
 
 /// <summary>
-/// The root of the AST: a program, e.g. <c>def program { ... }</c>. Holds the
-/// top-level declarations (currently functions).
+/// A program declaration, e.g. <c>def program { ... }</c>. Holds the
+/// top-level declarations (functions and statements) that contain <c>Main</c>.
 /// </summary>
 /// <param name="Name">The program's name.</param>
 /// <param name="Declarations">The top-level declarations inside the program.</param>
@@ -25,12 +25,53 @@ public record ProgramDecl(string Name, IReadOnlyList<Stmt> Declarations) : Stmt;
 /// <param name="ReturnType">The declared return type (e.g. <c>empty</c>).</param>
 /// <param name="Name">The function's name (e.g. <c>Main</c>).</param>
 /// <param name="Parameters">the typed parameters, in order</param>
-/// <param name="Body">The function body.</param>
+/// <param name="Body">The function body (empty when <paramref name="IsExternal"/> is true).</param>
+/// <param name="IsExternal">
+/// True when the body is provided by a host/native implementation (an
+/// <c>external function</c> inside a module) rather than written in the language.
+/// </param>
 public record FunctionDecl(
     string ReturnType,
     string Name,
     IReadOnlyList<Param> Parameters,
-    Block Body) : Stmt;
+    Block Body,
+    bool IsExternal = false) : Stmt;
+
+/// <summary>
+/// A function signature without a body: a member of a <c>contract</c>, e.g.
+/// <c>function empty out(string message);</c>. Same header as a
+/// <see cref="FunctionDecl"/> but declares only the shape to implement.
+/// </summary>
+/// <param name="ReturnType">The declared return type.</param>
+/// <param name="Name">The function's name.</param>
+/// <param name="Parameters">The typed parameters, in order.</param>
+public record FunctionSig(
+    string ReturnType,
+    string Name,
+    IReadOnlyList<Param> Parameters);
+
+/// <summary>
+/// A contract (interface) declaration, e.g.
+/// <c>def contract ITerminal { function empty out(string message); }</c>.
+/// Declares a set of function signatures a module can claim to implement.
+/// </summary>
+/// <param name="Name">The contract's name (e.g. <c>ITerminal</c>).</param>
+/// <param name="Members">The declared function signatures.</param>
+public record ContractDecl(string Name, IReadOnlyList<FunctionSig> Members) : Stmt;
+
+/// <summary>
+/// A module (implementation) declaration, e.g.
+/// <c>def module Term : ITerminal { external function empty out(string message); }</c>.
+/// Groups functions under a name; each is either <c>external</c> (native) or
+/// written in the language.
+/// </summary>
+/// <param name="Name">The module's name (e.g. <c>Term</c>).</param>
+/// <param name="Contract">The implemented contract's name, or null if none.</param>
+/// <param name="Functions">The module's functions (external or language-bodied).</param>
+public record ModuleDecl(
+    string Name,
+    string? Contract,
+    IReadOnlyList<FunctionDecl> Functions) : Stmt;
 
 /// <summary>
 /// A variable declaration, e.g. <c>let val1 = 1;</c>. Evaluating the initializer
@@ -41,13 +82,24 @@ public record FunctionDecl(
 /// <param name="Initializer">The expression whose value initializes the variable.</param>
 public record VarDecl(string? DeclareType, string Name, Expr Initializer) : Stmt;
 
+/// <summary>
+/// The root of the AST: a whole compilation unit. Holds the single program
+/// (the one with <c>Main</c>) plus any top-level contracts and modules, which
+/// are siblings of <c>def program</c> — not nested inside it.
+/// </summary>
+/// <param name="Program">The program declaration (holds <c>Main</c>).</param>
+/// <param name="Contracts">Top-level contract declarations.</param>
+/// <param name="Modules">Top-level module declarations.</param>
+public record CompilationUnit(ProgramDecl Program, IReadOnlyList<ContractDecl> Contracts, IReadOnlyList<ModuleDecl> Modules);
+
+
 #endregion
 
 #region Simple statements
 
 /// <summary>
 /// The bridge between the two node families: an expression used as a statement,
-/// e.g. <c>term.out(...);</c>. The expression is evaluated for its effect and
+/// e.g. <c>Term.out(...);</c>. The expression is evaluated for its effect and
 /// its resulting value is discarded.
 /// </summary>
 /// <param name="Expression">The expression to evaluate.</param>

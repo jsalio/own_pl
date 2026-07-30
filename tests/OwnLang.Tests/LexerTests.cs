@@ -126,7 +126,7 @@ public class LexerTests
     [Test]
     public void RangeIsASingleTokenButDotStaysDot()
     {
-        // '...' -> un RANGE ;  '.' solo -> DOT (para term.out)
+        // '...' -> un RANGE ;  '.' solo -> DOT (para Term.out)
         Assert.That(TokenTypesOf("..."), Is.EqualTo(new[] { TokenType.RANGE }));
         Assert.That(TokenTypesOf("."), Is.EqualTo(new[] { TokenType.DOT }));
     }

@@ -82,10 +82,10 @@ public record Unary(TokenType Operator, Expr Right) : Expr;
 #region Access & calls
 
 /// <summary>
-/// Member access on an object, e.g. the <c>term.out</c> part of
-/// <c>term.out(x)</c>.
+/// Member access on an object, e.g. the <c>Term.out</c> part of
+/// <c>Term.out(x)</c>.
 /// </summary>
-/// <param name="Object">The expression the member is accessed on (e.g. <c>term</c>).</param>
+/// <param name="Object">The expression the member is accessed on (e.g. <c>Term</c>).</param>
 /// <param name="Member">The accessed member's name (e.g. <c>out</c>).</param>
 public record MemberAccess(Expr Object, string Member) : Expr;
 

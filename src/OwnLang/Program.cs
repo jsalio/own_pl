@@ -6,9 +6,9 @@ string codigo = @"def program {
     {
         double precio = 19.99;
         float descuento = 0.1f;
-        term.out(""total: "" + (precio - precio * descuento));
+        Term.out(""total: "" + (precio - precio * descuento));
         int s = Sum(1,2);
-        term.out(s);
+        Term.out(s);
     }
     function int Sum(int a, int b)
     {
@@ -20,7 +20,9 @@ var lexer = new Lexer(codigo);
 var tokens = lexer.Tokenize();
 
 var parser = new Parser(tokens);
-ProgramDecl program = parser.Parse();
+CompilationUnit unit = parser.Parse();
+
+var program = unit.Program;
 
 foreach (var stm in program.Declarations)
 {
@@ -28,4 +30,4 @@ foreach (var stm in program.Declarations)
 }
 
 var interpreter = new Interpreter();
-interpreter.Interpret(program);
+interpreter.Interpret(unit);

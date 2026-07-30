@@ -12,6 +12,6 @@ internal interface IParser
     /// Throws on a syntax error (unexpected token, or trailing tokens
     /// after the program) with the offending token's line and column.
     /// </summary>
-    /// <returns>The <see cref="ProgramDecl"/> root of the AST.</returns>
-    ProgramDecl Parse();
+    /// <returns>The <see cref="CompilationUnit"/> root of the AST.</returns>
+    CompilationUnit Parse();
 }

@@ -26,6 +26,15 @@ public enum TokenType
     LOOP,
     /// <summary>The <c>stop</c> keyword (break out of the innermost loop).</summary>
     STOP,
+    /// <summary>The <c>contract</c> keyword (contract declaration).</summary>
+    CONTRACT,
+    /// <summary>The <c>module</c> keyword (module declaration).</summary>
+    MODULE,
+    /// <summary>The <c>external</c> keyword (external function declaration).</summary>
+    EXTERNAL,
+    /// <summary>The <c>yield</c> keyword (yield a value from a function).</summary>
+    YIELD,
+    /// <summary>The <c>return</c> keyword (return a value from a function).</summary>
     RETURN,
 
     #endregion

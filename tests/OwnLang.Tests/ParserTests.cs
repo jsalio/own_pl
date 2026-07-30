@@ -12,7 +12,7 @@ namespace OwnLang.Tests;
 public class ParserTests
 {
     private static ProgramDecl Parse(string source)
-        => new Parser(new Lexer(source).Tokenize()).Parse();
+        => new Parser(new Lexer(source).Tokenize()).Parse().Program;
 
     // Wraps an expression in a minimal program and returns its parsed tree,
     // so precedence can be asserted without boilerplate in every test.
@@ -102,8 +102,8 @@ public class ParserTests
     [Test]
     public void ParsesMemberCall()
     {
-        // term.out(result)  =>  Call(MemberAccess(Variable term, "out"), [Variable result])
-        var expr = ParseExpression("term.out(result)");
+        // Term.out(result)  =>  Call(MemberAccess(Variable Term, "out"), [Variable result])
+        var expr = ParseExpression("Term.out(result)");
 
         var call = (Call)expr;
         Assert.That(call.Arguments, Has.Count.EqualTo(1));
@@ -111,7 +111,7 @@ public class ParserTests
 
         var member = (MemberAccess)call.Callee;
         Assert.That(member.Member, Is.EqualTo("out"));
-        Assert.That(((Variable)member.Object).Name, Is.EqualTo("term"));
+        Assert.That(((Variable)member.Object).Name, Is.EqualTo("Term"));
     }
 
     [Test]
@@ -316,5 +316,49 @@ public class ParserTests
         Assert.That(
             () => Parse("def program { function empty Main() { loop { stop; } stop; } }"),
             Throws.Exception);
+    }
+
+    // Parses a whole compilation unit (program + contracts + modules).
+    private static CompilationUnit ParseUnit(string source)
+        => new Parser(new Lexer(source).Tokenize()).Parse();
+
+    [Test]
+    public void ParsesContractDeclaration()
+    {
+        var unit = ParseUnit(
+            @"def contract ITerminal { function empty out(string message); }
+              def program { function empty Main() { } }");
+
+        Assert.That(unit.Contracts, Has.Count.EqualTo(1));
+        Assert.That(unit.Contracts[0].Name, Is.EqualTo("ITerminal"));
+        Assert.That(unit.Contracts[0].Members[0].Name, Is.EqualTo("out"));
+        Assert.That(unit.Contracts[0].Members[0].Parameters[0].Type, Is.EqualTo("string"));
+    }
+
+    [Test]
+    public void ParsesModuleWithExternalAndLanguageFunctions()
+    {
+        var unit = ParseUnit(
+            @"def module Term : ITerminal {
+                  external function empty out(string message);
+                  function int id(int x) { return x; }
+              }
+              def program { function empty Main() { } }");
+
+        var module = unit.Modules[0];
+        Assert.That(module.Name, Is.EqualTo("Term"));
+        Assert.That(module.Contract, Is.EqualTo("ITerminal"));
+        Assert.That(module.Functions[0].IsExternal, Is.True);   // external out(...)
+        Assert.That(module.Functions[1].IsExternal, Is.False);  // function id(...)
+    }
+
+    [Test]
+    public void ModuleWithoutContractHasNullContract()
+    {
+        var unit = ParseUnit(
+            @"def module Math { function int one() { return 1; } }
+              def program { function empty Main() { } }");
+
+        Assert.That(unit.Modules[0].Contract, Is.Null);
     }
 }
