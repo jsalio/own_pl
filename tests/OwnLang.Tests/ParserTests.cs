@@ -180,7 +180,10 @@ public class ParserTests
     [Test]
     public void ParsesStopStatement()
     {
-        Assert.That(FirstStatement("stop;"), Is.TypeOf<StopStmt>());
+        // 'stop' solo es válido dentro de un loop, así que se envuelve en uno
+        // y se comprueba que el cuerpo contiene un StopStmt.
+        var loop = (LoopStmt)FirstStatement("loop { stop; }");
+        Assert.That(loop.Body.Statements[0], Is.TypeOf<StopStmt>());
     }
 
     [Test]
@@ -274,6 +277,44 @@ public class ParserTests
     {
         Assert.That(
             () => Parse("def program { function empty Main() { } } extra"),
+            Throws.Exception);
+    }
+
+    [Test]
+    public void StopOutsideLoopThrows()
+    {
+        // 'stop' fuera de cualquier loop es un error de parseo (loopDepth == 0),
+        // no un BreakSignal que se escapa en ejecución.
+        Assert.That(
+            () => Parse("def program { function empty Main() { stop; } }"),
+            Throws.Exception);
+    }
+
+    [Test]
+    public void StopInsideLoopParses()
+    {
+        Assert.That(
+            () => Parse("def program { function empty Main() { loop { stop; } } }"),
+            Throws.Nothing);
+    }
+
+    [Test]
+    public void StopInsideWhenInsideLoopParses()
+    {
+        // El 'stop' anidado dentro de un 'when' sigue "dentro" del loop:
+        // loopDepth > 0 mientras se parsea todo el cuerpo del loop.
+        Assert.That(
+            () => Parse("def program { function empty Main() { loop { when(true) { stop; } } } }"),
+            Throws.Nothing);
+    }
+
+    [Test]
+    public void StopAfterLoopThrows()
+    {
+        // Verifica que loopDepth vuelve a 0 al cerrar el loop (el 'finally'):
+        // un 'stop' colocado después del loop debe volver a fallar.
+        Assert.That(
+            () => Parse("def program { function empty Main() { loop { stop; } stop; } }"),
             Throws.Exception);
     }
 }

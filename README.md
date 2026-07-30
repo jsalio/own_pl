@@ -252,7 +252,8 @@ primary        → NUMBER | STRING | "true" | "false" | IDENT | "(" expression "
   `int`, `uint`, `long`, `ulong`.
 - Conditionals (`when` / `else` / `else when`) and loops (`loop`, `loop when`,
   `loop[i: 1...3]`, with `stop`) exist. Conditions must be booleans (no
-  truthiness coercion). `stop` outside a loop is an unhandled error.
+  truthiness coercion). A `stop` outside any loop is rejected at parse time
+  (the parser tracks loop nesting), so it can never reach the interpreter.
 - Scopes are lexical: every block (`when`/loop body, function body) opens a child
   scope, so a `let` inside a block is local to it and dies when the block ends.
   Assignment `x = expr` mutates an existing variable (searching enclosing scopes);
