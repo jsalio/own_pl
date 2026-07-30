@@ -18,6 +18,7 @@ internal sealed class Parser : IParser
 
     private readonly IReadOnlyList<Token> tokens;
     private int current = 0;
+    private int loopDepth = 0;
 
     // Constructores de expresión primaria indexados por el token que las inicia.
     // Se construye una sola vez por parser (no en cada llamada a Primary()).
@@ -203,38 +204,49 @@ internal sealed class Parser : IParser
     // ("loop" ya consumido)
     private Stmt LoopStatement()
     {
-        // loop[i: from...to] { }  -> bucle contado
-        if (Match(TokenType.LBRACKET))
+        loopDepth++;
+        try
         {
-            Token variable = Consume(TokenType.IDENTIFIER,
-                "se esperaba el nombre del contador después de '['");
-            Consume(TokenType.COLON, "se esperaba ':' después del contador");
-            Expr from = Expression();
-            Consume(TokenType.RANGE, "se esperaba '...' en el rango");
-            Expr to = Expression();
-            Consume(TokenType.RBRACKET, "se esperaba ']' para cerrar el rango");
-            Block rangeBody = Block();
-            return new RangeLoopStmt(variable.Lexeme, from, to, rangeBody);
-        }
+            // loop[i: from...to] { }  -> bucle contado
+            if (Match(TokenType.LBRACKET))
+            {
+                Token variable = Consume(TokenType.IDENTIFIER,
+                    "se esperaba el nombre del contador después de '['");
+                Consume(TokenType.COLON, "se esperaba ':' después del contador");
+                Expr from = Expression();
+                Consume(TokenType.RANGE, "se esperaba '...' en el rango");
+                Expr to = Expression();
+                Consume(TokenType.RBRACKET, "se esperaba ']' para cerrar el rango");
+                Block rangeBody = Block();
+                return new RangeLoopStmt(variable.Lexeme, from, to, rangeBody);
+            }
 
-        // loop when(cond) { }  -> while pre-test
-        if (Match(TokenType.WHEN))
+            // loop when(cond) { }  -> while pre-test
+            if (Match(TokenType.WHEN))
+            {
+                Consume(TokenType.LPAREN, "se esperaba '(' después de 'when'");
+                Expr condition = Expression();
+                Consume(TokenType.RPAREN, "se esperaba ')' después de la condición");
+                Block whileBody = Block();
+                return new WhileStmt(condition, whileBody);
+            }
+
+            // loop { }  -> infinito (se sale con 'stop')
+            Block body = Block();
+            return new LoopStmt(body);
+        }
+        finally
         {
-            Consume(TokenType.LPAREN, "se esperaba '(' después de 'when'");
-            Expr condition = Expression();
-            Consume(TokenType.RPAREN, "se esperaba ')' después de la condición");
-            Block whileBody = Block();
-            return new WhileStmt(condition, whileBody);
+            loopDepth--;
         }
-
-        // loop { }  -> infinito (se sale con 'stop')
-        Block body = Block();
-        return new LoopStmt(body);
     }
 
     // stopStmt -> "stop" ";"   ("stop" ya consumido)
     private Stmt StopStatement()
     {
+        if (loopDepth == 0)
+            throw new System.Exception("Error en tiempo de ejecucion: 'stop' no puede estar fuera de un loop");
+
         Consume(TokenType.SEMICOLON, "se esperaba ';' después de 'stop'");
         return new StopStmt();
     }
