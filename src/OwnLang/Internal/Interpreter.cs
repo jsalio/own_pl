@@ -19,7 +19,9 @@ internal sealed class Interpreter : IInterpreter
     private readonly Environment globals = new();
     private Environment environment = new();
     private readonly Dictionary<string, FunctionDecl> functions = new();
-
+    private readonly Dictionary<string, ContractDecl> contracts = new();
+    private readonly Dictionary<string, ModuleDecl> modules = new();
+    private readonly Dictionary<string, System.Func<IReadOnlyList<object?>, object?>> natives = new();
 
     #endregion
 
@@ -28,6 +30,26 @@ internal sealed class Interpreter : IInterpreter
     public Interpreter()
     {
         environment = globals;
+        RegisterBuiltins();
+    }
+
+    // Registra los módulos primitivos que aterrizan en C# (la "stdlib nativa").
+    // Esta es la costura por donde una futura prelude en .own se enchufará.
+    private void RegisterBuiltins()
+    {
+        // def module Term { external function empty out(string message); }
+        var outFn = new FunctionDecl("empty", "out",
+            new List<Param> { new Param("string", "message") },
+            new Block(new List<Stmt>()), IsExternal: true);
+        modules["Term"] = new ModuleDecl("Term", null,
+            new List<FunctionDecl> { outFn });
+
+        natives["Term.out"] = args =>
+        {
+            object? message = args.Count > 0 ? args[0] : null;
+            System.Console.WriteLine(Stringify(message));
+            return null;
+        };
     }
 
     /// <inheritdoc/>
@@ -42,6 +64,25 @@ internal sealed class Interpreter : IInterpreter
             if (decl is FunctionDecl fn)
                 functions[fn.Name] = fn;
         }
+
+        foreach (var contract in unit.Contracts)
+        {
+            if (contracts.ContainsKey(contract.Name))
+                throw new System.Exception(
+                    $"Error en tiempo de ejecución: el contrato '{contract.Name}' ya está definido");
+            contracts[contract.Name] = contract;
+        }
+
+        foreach (var module in unit.Modules)
+        {
+            if (modules.ContainsKey(module.Name))
+                throw new System.Exception(
+                    $"Error en tiempo de ejecución: el módulo '{module.Name}' ya está definido");
+            modules[module.Name] = module;
+        }
+
+        foreach (var module in unit.Modules)
+            ValidateModule(module);
 
         foreach (var decl in unit.Program.Declarations)
         {
@@ -235,26 +276,55 @@ internal sealed class Interpreter : IInterpreter
 
     private object? EvaluateCall(Call call)
     {
-        // Caso especial cableado: Term.out(x) -> Console.WriteLine(x)
-        // (aún no implementamos objetos ni métodos de verdad)
+        // Llamada a miembro de módulo: Modulo.funcion(args)
         if (call.Callee is MemberAccess member
-            && member.Object is Variable target
-            && target.Name == "Term"
-            && member.Member == "out")
+            && member.Object is Variable moduleRef
+            && modules.TryGetValue(moduleRef.Name, out var module))
         {
-            object? argument = call.Arguments.Count > 0
-                ? Evaluate(call.Arguments[0])
-                : null;
-
-            System.Console.WriteLine(Stringify(argument));
-            return null;
+            return CallModuleFunction(module, member.Member, call.Arguments);
         }
 
+        // Función top-level definida por el usuario: nombre(args)
         if (call.Callee is Variable fnRef && functions.TryGetValue(fnRef.Name, out var fn))
             return CallFunction(fn, call.Arguments);
 
         throw new System.Exception(
-            "Llamada no soportada: por ahora solo existe 'Term.out(...)'");
+            "Llamada no soportada: se esperaba 'Módulo.función(...)' o una función definida");
+    }
+
+    // Resuelve una función dentro de un módulo: si es 'external' despacha al
+    // nativo registrado bajo "Módulo.función"; si no, ejecuta su cuerpo como
+    // una función normal (CallFunction).
+    private object? CallModuleFunction(ModuleDecl module, string name, IReadOnlyList<Expr> args)
+    {
+        FunctionDecl? fn = null;
+        foreach (var candidate in module.Functions)
+            if (candidate.Name == name) { fn = candidate; break; }
+
+        if (fn is null)
+            throw new System.Exception(
+                $"el módulo '{module.Name}' no tiene una función '{name}'");
+
+        if (!fn.IsExternal)
+            return CallFunction(fn, args);
+
+        string key = $"{module.Name}.{name}";
+        if (!natives.TryGetValue(key, out var native))
+            throw new System.Exception($"no hay implementación nativa para '{key}'");
+
+        if (args.Count != fn.Parameters.Count)
+            throw new System.Exception(
+                $"'{key}' expects {fn.Parameters.Count} argument(s), but received {args.Count}");
+
+        // Las funciones external NO coercionan: el nativo recibe los valores
+        // crudos y hace su propio marshaling (p.ej. Term.out imprime cualquier
+        // tipo vía Stringify). La coerción por tipo es cosa de las funciones
+        // con cuerpo en el lenguaje (CallFunction).
+        var values = new List<object?>(args.Count);
+        for (int i = 0; i < args.Count; i++)
+            values.Add(Evaluate(args[i]));
+
+        return native(values);
     }
 
 
@@ -554,6 +624,45 @@ internal sealed class Interpreter : IInterpreter
         float f => f.ToString(CultureInfo.InvariantCulture),
         _ => value.ToString() ?? ""
     };
+
+    // Valida un módulo al registrarlo: (1) si implementa un contrato, debe
+    // proveer toda firma declarada (nombre + tipos de parámetros + retorno);
+    // (2) toda función 'external' debe tener un nativo registrado.
+    private void ValidateModule(ModuleDecl module)
+    {
+        if (module.Contract is not null)
+        {
+            if (!contracts.TryGetValue(module.Contract, out var contract))
+                throw new System.Exception(
+                    $"el módulo '{module.Name}' implementa un contrato desconocido '{module.Contract}'");
+
+            foreach (var sig in contract.Members)
+            {
+                FunctionDecl? impl = null;
+                foreach (var f in module.Functions)
+                    if (f.Name == sig.Name) { impl = f; break; }
+
+                if (impl is null)
+                    throw new System.Exception(
+                        $"el módulo '{module.Name}' no implementa '{sig.Name}' del contrato '{contract.Name}'");
+
+                bool sameShape = impl.ReturnType == sig.ReturnType
+                    && impl.Parameters.Count == sig.Parameters.Count;
+                for (int i = 0; sameShape && i < sig.Parameters.Count; i++)
+                    if (impl.Parameters[i].Type != sig.Parameters[i].Type)
+                        sameShape = false;
+
+                if (!sameShape)
+                    throw new System.Exception(
+                        $"la firma de '{sig.Name}' en '{module.Name}' no coincide con el contrato '{contract.Name}'");
+            }
+        }
+
+        foreach (var f in module.Functions)
+            if (f.IsExternal && !natives.ContainsKey($"{module.Name}.{f.Name}"))
+                throw new System.Exception(
+                    $"la función external '{module.Name}.{f.Name}' no tiene implementación nativa registrada");
+    }
 
     #endregion
 }

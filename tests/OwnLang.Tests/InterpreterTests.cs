@@ -556,7 +556,76 @@ public class InterpreterTests
     [Test]
     public void UnknownCallThrows()
     {
-        // solo Term.out(...) está soportado
+        // 'otra' no es un módulo registrado ni una función definida
         Assert.That(() => Eval("otra.cosa(1)"), Throws.Exception);
     }
+
+    #region Modules & contracts
+
+    [Test]
+    public void ModuleFunctionWithLanguageBodyIsCallable()
+    {
+        Assert.That(
+            Run(@"def module Math { function int twice(int n) { return n + n; } }
+                  def program { function empty Main() { Term.out(Math.twice(21)); } }"),
+            Is.EqualTo("42"));
+    }
+
+    [Test]
+    public void ModuleImplementingContractValidatesAndRuns()
+    {
+        Assert.That(
+            Run(@"def contract IGreeter { function string greet(string who); }
+                  def module Hello : IGreeter { function string greet(string who) { return ""hola "" + who; } }
+                  def program { function empty Main() { Term.out(Hello.greet(""jorge"")); } }"),
+            Is.EqualTo("hola jorge"));
+    }
+
+    [Test]
+    public void ModuleMissingContractMemberThrows()
+    {
+        Assert.That(
+            () => Run(@"def contract IGreeter { function string greet(string who); }
+                        def module Hello : IGreeter { function int other(int x) { return x; } }
+                        def program { function empty Main() { } }"),
+            Throws.Exception);
+    }
+
+    [Test]
+    public void ModuleImplementingUnknownContractThrows()
+    {
+        Assert.That(
+            () => Run(@"def module Hello : INope { function empty noop() { } }
+                        def program { function empty Main() { } }"),
+            Throws.Exception);
+    }
+
+    [Test]
+    public void ExternalWithoutNativeBindingThrows()
+    {
+        // Un 'external' de usuario sin nativo registrado falla al validar.
+        Assert.That(
+            () => Run(@"def module Sys { external function empty boom(); }
+                        def program { function empty Main() { } }"),
+            Throws.Exception);
+    }
+
+    [Test]
+    public void UnknownModuleMemberThrows()
+    {
+        Assert.That(
+            () => Run(@"def program { function empty Main() { Term.nope(1); } }"),
+            Throws.Exception);
+    }
+
+    [Test]
+    public void RedefiningBuiltinModuleThrows()
+    {
+        Assert.That(
+            () => Run(@"def module Term { function empty out(string m) { } }
+                        def program { function empty Main() { } }"),
+            Throws.Exception);
+    }
+
+    #endregion
 }
