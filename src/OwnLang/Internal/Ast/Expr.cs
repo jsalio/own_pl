@@ -74,7 +74,7 @@ public record Logical(Expr Left, TokenType Operator, Expr Right) : Expr;
 /// A unary prefix operation, e.g. <c>!flag</c>.
 /// </summary>
 /// <param name="Operator">The operator token type (<c>BANG</c>).</param>
-/// <param name="Operand">The operand the operator applies to.</param>
+/// <param name="Right">The operand the operator applies to.</param>
 public record Unary(TokenType Operator, Expr Right) : Expr;
 
 #endregion
