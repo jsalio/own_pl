@@ -12,7 +12,7 @@ namespace OwnLang.Tests;
 public class ParserTests
 {
     private static ProgramDecl Parse(string source)
-        => new Parser(new Lexer(source).Tokenize()).Parse();
+        => new Parser(new Lexer(source).Tokenize()).Parse().Program;
 
     // Wraps an expression in a minimal program and returns its parsed tree,
     // so precedence can be asserted without boilerplate in every test.
@@ -102,8 +102,8 @@ public class ParserTests
     [Test]
     public void ParsesMemberCall()
     {
-        // term.out(result)  =>  Call(MemberAccess(Variable term, "out"), [Variable result])
-        var expr = ParseExpression("term.out(result)");
+        // Term.out(result)  =>  Call(MemberAccess(Variable Term, "out"), [Variable result])
+        var expr = ParseExpression("Term.out(result)");
 
         var call = (Call)expr;
         Assert.That(call.Arguments, Has.Count.EqualTo(1));
@@ -111,7 +111,7 @@ public class ParserTests
 
         var member = (MemberAccess)call.Callee;
         Assert.That(member.Member, Is.EqualTo("out"));
-        Assert.That(((Variable)member.Object).Name, Is.EqualTo("term"));
+        Assert.That(((Variable)member.Object).Name, Is.EqualTo("Term"));
     }
 
     [Test]

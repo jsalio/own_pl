@@ -10,7 +10,7 @@ namespace OwnLang.Tests;
 /// <summary>
 /// Stage 3 regression tests: AST -> execution, verified end-to-end through the
 /// full pipeline (lexer + parser + interpreter). Output produced by
-/// <c>term.out</c> is captured by redirecting <see cref="Console.Out"/>.
+/// <c>Term.out</c> is captured by redirecting <see cref="Console.Out"/>.
 /// </summary>
 [TestFixture]
 public class InterpreterTests
@@ -35,9 +35,9 @@ public class InterpreterTests
         return buffer.ToString().Replace("\r\n", "\n").Trim();
     }
 
-    // Wraps a single expression in term.out(...) and returns the printed result.
+    // Wraps a single expression in Term.out(...) and returns the printed result.
     private static string Eval(string expression)
-        => Run($"def program {{ function empty Main() {{ term.out({expression}); }} }}");
+        => Run($"def program {{ function empty Main() {{ Term.out({expression}); }} }}");
 
     // Wraps statements in a Main body and returns what the program printed.
     private static string RunMain(string body)
@@ -82,7 +82,7 @@ public class InterpreterTests
                 let val1 = 1;
                 let val2 = 2;
                 let result = val1 + val2;
-                term.out(result);
+                Term.out(result);
             }
         }";
 
@@ -97,8 +97,8 @@ public class InterpreterTests
                 let val1 = 1;
                 let val2 = 2;
                 let result = val1 + val2;
-                term.out(""resultado:"");
-                term.out(result);
+                Term.out(""resultado:"");
+                Term.out(result);
             }
         }";
 
@@ -140,20 +140,20 @@ public class InterpreterTests
     [Test]
     public void WhenTrueExecutesBody()
     {
-        Assert.That(RunMain(@"when(true) { term.out(""si""); }"), Is.EqualTo("si"));
+        Assert.That(RunMain(@"when(true) { Term.out(""si""); }"), Is.EqualTo("si"));
     }
 
     [Test]
     public void WhenFalseSkipsBody()
     {
-        Assert.That(RunMain(@"when(false) { term.out(""no""); }"), Is.Empty);
+        Assert.That(RunMain(@"when(false) { Term.out(""no""); }"), Is.Empty);
     }
 
     [Test]
     public void WhenFalseRunsElseBranch()
     {
         Assert.That(
-            RunMain(@"when(false) { term.out(""a""); } else { term.out(""b""); }"),
+            RunMain(@"when(false) { Term.out(""a""); } else { Term.out(""b""); }"),
             Is.EqualTo("b"));
     }
 
@@ -161,16 +161,16 @@ public class InterpreterTests
     public void ElseWhenChainSelectsMatchingBranch()
     {
         Assert.That(
-            RunMain(@"when(false) { term.out(""a""); }
-                      else when(true) { term.out(""b""); }
-                      else { term.out(""c""); }"),
+            RunMain(@"when(false) { Term.out(""a""); }
+                      else when(true) { Term.out(""b""); }
+                      else { Term.out(""c""); }"),
             Is.EqualTo("b"));
     }
 
     [Test]
     public void WhenConditionWithComparison()
     {
-        Assert.That(RunMain(@"when(1 + 2 == 3) { term.out(""ok""); }"), Is.EqualTo("ok"));
+        Assert.That(RunMain(@"when(1 + 2 == 3) { Term.out(""ok""); }"), Is.EqualTo("ok"));
     }
 
     [Test]
@@ -184,7 +184,7 @@ public class InterpreterTests
     {
         // loop[i: 1...3] recorre 1, 2, 3
         Assert.That(
-            RunMain(@"loop[i: 1...3] { term.out(i); }"),
+            RunMain(@"loop[i: 1...3] { Term.out(i); }"),
             Is.EqualTo("1\n2\n3"));
     }
 
@@ -193,7 +193,7 @@ public class InterpreterTests
     {
         Assert.That(
             RunMain(@"let x = 0;
-                      loop when(x < 3) { term.out(x); x = x + 1; }"),
+                      loop when(x < 3) { Term.out(x); x = x + 1; }"),
             Is.EqualTo("0\n1\n2"));
     }
 
@@ -204,7 +204,7 @@ public class InterpreterTests
             RunMain(@"let n = 0;
                       loop {
                           when(n == 2) { stop; }
-                          term.out(n);
+                          Term.out(n);
                           n = n + 1;
                       }"),
             Is.EqualTo("0\n1"));
@@ -214,7 +214,7 @@ public class InterpreterTests
     public void AssignmentMutatesExistingVariable()
     {
         Assert.That(
-            RunMain(@"let x = 1; x = 5; term.out(x);"),
+            RunMain(@"let x = 1; x = 5; Term.out(x);"),
             Is.EqualTo("5"));
     }
 
@@ -229,7 +229,7 @@ public class InterpreterTests
     {
         // 'secreto' se declara dentro del when; fuera del bloque no existe.
         Assert.That(
-            () => RunMain(@"when(true) { let secreto = 42; } term.out(secreto);"),
+            () => RunMain(@"when(true) { let secreto = 42; } Term.out(secreto);"),
             Throws.Exception);
     }
 
@@ -238,7 +238,7 @@ public class InterpreterTests
     {
         // El contador 'i' vive en el scope del loop; afuera ya no existe.
         Assert.That(
-            () => RunMain(@"loop[i: 1...3] { term.out(i); } term.out(i);"),
+            () => RunMain(@"loop[i: 1...3] { Term.out(i); } Term.out(i);"),
             Throws.Exception);
     }
 
@@ -249,7 +249,7 @@ public class InterpreterTests
         Assert.That(
             RunMain(@"let total = 0;
                       loop[i: 1...3] { total = total + i; }
-                      term.out(total);"),
+                      Term.out(total);"),
             Is.EqualTo("6"));
     }
 
@@ -258,7 +258,7 @@ public class InterpreterTests
     {
         Assert.That(
             Run(@"def program {
-                    function empty Main() { term.out(suma(2, 3)); }
+                    function empty Main() { Term.out(suma(2, 3)); }
                     function int suma(int a, int b) { return a + b; }
                   }"),
             Is.EqualTo("5"));
@@ -270,7 +270,7 @@ public class InterpreterTests
         // El argumento se valida contra el tipo del parámetro (como una decl tipada).
         Assert.That(
             () => Run(@"def program {
-                          function empty Main() { term.out(f(""hola"")); }
+                          function empty Main() { Term.out(f(""hola"")); }
                           function int f(int a) { return a; }
                         }"),
             Throws.Exception);
@@ -281,7 +281,7 @@ public class InterpreterTests
     {
         Assert.That(
             () => Run(@"def program {
-                          function empty Main() { term.out(suma(1)); }
+                          function empty Main() { Term.out(suma(1)); }
                           function int suma(int a, int b) { return a + b; }
                         }"),
             Throws.Exception);
@@ -293,7 +293,7 @@ public class InterpreterTests
         Assert.That(
             Run(@"def program {
                     function empty Main() { saluda(); }
-                    function empty saluda() { term.out(""hola""); }
+                    function empty saluda() { Term.out(""hola""); }
                   }"),
             Is.EqualTo("hola"));
     }
@@ -306,7 +306,7 @@ public class InterpreterTests
         Assert.That(
             () => Run(@"def program {
                           function empty Main() { let secreto = 1; usa(); }
-                          function empty usa() { term.out(secreto); }
+                          function empty usa() { Term.out(secreto); }
                         }"),
             Throws.Exception);
     }
@@ -316,7 +316,7 @@ public class InterpreterTests
     {
         Assert.That(
             Run(@"def program {
-                    function empty Main() { term.out(pick(true)); }
+                    function empty Main() { Term.out(pick(true)); }
                     function int pick(bool b) {
                         when(b) { return 1; }
                         return 2;
@@ -383,7 +383,7 @@ public class InterpreterTests
     public void TypedStringDeclarationStoresValue()
     {
         Assert.That(
-            RunMain(@"string s = ""jorge""; term.out(s);"),
+            RunMain(@"string s = ""jorge""; Term.out(s);"),
             Is.EqualTo("jorge"));
     }
 
@@ -417,7 +417,7 @@ public class InterpreterTests
     [Test]
     public void TypedBoolDeclarationStoresValue()
     {
-        Assert.That(RunMain(@"bool b = 3 < 5; term.out(b);"), Is.EqualTo("True"));
+        Assert.That(RunMain(@"bool b = 3 < 5; Term.out(b);"), Is.EqualTo("True"));
     }
 
     [Test]
@@ -429,7 +429,7 @@ public class InterpreterTests
     [Test]
     public void TypedCharDeclarationStoresValue()
     {
-        Assert.That(RunMain(@"char c = 'J'; term.out(c);"), Is.EqualTo("J"));
+        Assert.That(RunMain(@"char c = 'J'; Term.out(c);"), Is.EqualTo("J"));
     }
 
     [Test]
@@ -441,26 +441,26 @@ public class InterpreterTests
     [Test]
     public void IntDeclarationStoresValue()
     {
-        Assert.That(RunMain(@"int a = 5; term.out(a);"), Is.EqualTo("5"));
+        Assert.That(RunMain(@"int a = 5; Term.out(a);"), Is.EqualTo("5"));
     }
 
     [Test]
     public void UintCoercesFromIntLiteral()
     {
-        Assert.That(RunMain(@"uint b = 5; term.out(b);"), Is.EqualTo("5"));
+        Assert.That(RunMain(@"uint b = 5; Term.out(b);"), Is.EqualTo("5"));
     }
 
     [Test]
     public void MixedUintAndIntArithmeticGivesResult()
     {
         // uint + int -> se opera en int
-        Assert.That(RunMain(@"uint b = 5; term.out(b + 1);"), Is.EqualTo("6"));
+        Assert.That(RunMain(@"uint b = 5; Term.out(b + 1);"), Is.EqualTo("6"));
     }
 
     [Test]
     public void UintArithmetic()
     {
-        Assert.That(RunMain(@"uint c = 10; uint d = 3; term.out(c - d);"), Is.EqualTo("7"));
+        Assert.That(RunMain(@"uint c = 10; uint d = 3; Term.out(c - d);"), Is.EqualTo("7"));
     }
 
     [Test]
@@ -480,13 +480,13 @@ public class InterpreterTests
     public void LongStoresBigValue()
     {
         // literal auto-ensanchado a long (no cabe en int)
-        Assert.That(RunMain(@"long a = 3000000000; term.out(a);"), Is.EqualTo("3000000000"));
+        Assert.That(RunMain(@"long a = 3000000000; Term.out(a);"), Is.EqualTo("3000000000"));
     }
 
     [Test]
     public void IntAndLongMixPromotesToLong()
     {
-        Assert.That(RunMain(@"int i = 5; long l = 10; term.out(i + l);"), Is.EqualTo("15"));
+        Assert.That(RunMain(@"int i = 5; long l = 10; Term.out(i + l);"), Is.EqualTo("15"));
     }
 
     [Test]
@@ -499,13 +499,13 @@ public class InterpreterTests
     [Test]
     public void DoubleDeclarationStoresValue()
     {
-        Assert.That(RunMain(@"double d = 3.14; term.out(d);"), Is.EqualTo("3.14"));
+        Assert.That(RunMain(@"double d = 3.14; Term.out(d);"), Is.EqualTo("3.14"));
     }
 
     [Test]
     public void FloatSuffixLiteralStoresValue()
     {
-        Assert.That(RunMain(@"float f = 1.5f; term.out(f);"), Is.EqualTo("1.5"));
+        Assert.That(RunMain(@"float f = 1.5f; Term.out(f);"), Is.EqualTo("1.5"));
     }
 
     [Test]
@@ -556,7 +556,7 @@ public class InterpreterTests
     [Test]
     public void UnknownCallThrows()
     {
-        // solo term.out(...) está soportado
+        // solo Term.out(...) está soportado
         Assert.That(() => Eval("otra.cosa(1)"), Throws.Exception);
     }
 }

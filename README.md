@@ -15,8 +15,8 @@ def program {
         let val1 = 1;
         let val2 = 2;
         let result = val1 + val2;
-        term.out("resultado:");
-        term.out(result);
+        Term.out("resultado:");
+        Term.out(result);
     }
 }
 ```
@@ -56,7 +56,7 @@ fixture per pipeline stage:
 |---|---|
 | `LexerTests` | text → tokens (`DetectString`, `DetectVals`, `DetectCodeBlock`, keywords, operators, errors) |
 | `ParserTests` | tokens → AST (precedence, associativity, call shape, syntax errors) |
-| `InterpreterTests` | end-to-end execution (arithmetic, precedence, variables, `term.out` output) |
+| `InterpreterTests` | end-to-end execution (arithmetic, precedence, variables, `Term.out` output) |
 | `EnvironmentTests` | the runtime variable store |
 
 ```bash
@@ -65,7 +65,7 @@ dotnet test --filter FullyQualifiedName~LexerTests   # one fixture
 dotnet test --filter Name=DetectString               # one test
 ```
 
-`InterpreterTests` verify behavior end-to-end and capture `term.out` output by
+`InterpreterTests` verify behavior end-to-end and capture `Term.out` output by
 redirecting `Console.Out`. The suite accesses the interpreter's `internal` types
 through `InternalsVisibleTo` declared in `src/OwnLang/OwnLang.csproj`.
 
@@ -114,7 +114,7 @@ Walks the AST with *pattern matching* over the nodes (`record`), separating:
 
 Variables live in an `Environment` (a `name → value` map). Environments are
 **chained**: each one has an optional enclosing parent, every block opens a child
-scope, and name lookup/assignment walks up the chain. The `term.out(...)` output
+scope, and name lookup/assignment walks up the chain. The `Term.out(...)` output
 is wired to `Console.WriteLine` in this version.
 
 ## Project structure
@@ -164,7 +164,7 @@ Two families of nodes:
 | `Logical` | a short-circuiting logical op: `a && b`, `a \|\| b` |
 | `Unary` | a unary prefix op: `!flag` |
 | `Assign` | an assignment to an existing variable: `x = x + 1` |
-| `MemberAccess` | member access: `term.out` |
+| `MemberAccess` | member access: `Term.out` |
 | `Call` | a call: `out(result)` |
 
 **Statements** (`Stmt`) — "what does it execute?":
@@ -172,7 +172,7 @@ Two families of nodes:
 | Node | Represents |
 |---|---|
 | `VarDecl` | `let val1 = 1;` |
-| `ExpressionStmt` | an expression used as a statement: `term.out(...);` |
+| `ExpressionStmt` | an expression used as a statement: `Term.out(...);` |
 | `Block` | a block `{ ... }` |
 | `WhenStmt` | a conditional: `when(c) { } else { }` |
 | `LoopStmt` | an infinite loop: `loop { }` |
@@ -221,7 +221,7 @@ primary        → NUMBER | STRING | "true" | "false" | IDENT | "(" expression "
 ## Execution conventions
 
 - The interpreter looks for the `Main` function inside `def` and executes its body.
-- `term.out(x)` prints `x` to the console (hardcoded special case; there is no
+- `Term.out(x)` prints `x` to the console (hardcoded special case; there is no
   real object system yet).
 
 ## Current limitations
@@ -264,7 +264,7 @@ primary        → NUMBER | STRING | "true" | "false" | IDENT | "(" expression "
   parameter's type, the returned value is coerced to the declared return type
   (`empty` = void), arity is checked, and each call runs in a scope that is a child
   of the **global** scope (lexical — a function cannot see its caller's locals).
-- `term.out` is a hardcoded shortcut, not a real object with methods.
+- `Term.out` is a hardcoded shortcut, not a real object with methods.
 
 ## Roadmap
 
@@ -284,7 +284,7 @@ primary        → NUMBER | STRING | "true" | "false" | IDENT | "(" expression "
   an `Environment` child of the global scope; `return` unwinds via `ReturnSignal`).
 - [x] Logical operators: `&&`, `||` (short-circuiting, via a `Logical` node) and
   unary `!` (via a `Unary` node), with `logicOr`/`logicAnd`/`unary` precedence levels.
-- [ ] Real objects instead of the `term.out` shortcut.
+- [ ] Real objects instead of the `Term.out` shortcut.
 - [ ] Read `.own` source files and/or a REPL.
 
 ## Reference

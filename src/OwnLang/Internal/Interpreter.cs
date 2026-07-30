@@ -31,8 +31,9 @@ internal sealed class Interpreter : IInterpreter
     }
 
     /// <inheritdoc/>
-    public void Interpret(ProgramDecl program)
+    public void Interpret(CompilationUnit unit)
     {
+        ProgramDecl? program = unit.Program;
         FunctionDecl? main = null;
 
 
@@ -42,7 +43,7 @@ internal sealed class Interpreter : IInterpreter
                 functions[fn.Name] = fn;
         }
 
-        foreach (var decl in program.Declarations)
+        foreach (var decl in unit.Program.Declarations)
         {
             if (decl is FunctionDecl fn && fn.Name == "Main")
             {
@@ -234,11 +235,11 @@ internal sealed class Interpreter : IInterpreter
 
     private object? EvaluateCall(Call call)
     {
-        // Caso especial cableado: term.out(x) -> Console.WriteLine(x)
+        // Caso especial cableado: Term.out(x) -> Console.WriteLine(x)
         // (aún no implementamos objetos ni métodos de verdad)
         if (call.Callee is MemberAccess member
             && member.Object is Variable target
-            && target.Name == "term"
+            && target.Name == "Term"
             && member.Member == "out")
         {
             object? argument = call.Arguments.Count > 0
@@ -253,7 +254,7 @@ internal sealed class Interpreter : IInterpreter
             return CallFunction(fn, call.Arguments);
 
         throw new System.Exception(
-            "Llamada no soportada: por ahora solo existe 'term.out(...)'");
+            "Llamada no soportada: por ahora solo existe 'Term.out(...)'");
     }
 
 

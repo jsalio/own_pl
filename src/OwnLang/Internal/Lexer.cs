@@ -35,6 +35,9 @@ internal sealed class Lexer : ILexer
         ["double"] = TokenType.TYPE_DOUBLE,
         ["float"] = TokenType.TYPE_FLOAT,
         ["return"] = TokenType.RETURN,
+        ["contract"] = TokenType.CONTRACT,
+        ["module"] = TokenType.MODULE,
+        ["external"] = TokenType.EXTERNAL,
     };
 
     private readonly string source;
@@ -173,7 +176,7 @@ internal sealed class Lexer : ILexer
         }
 
         // Parte fraccionaria: solo si el '.' va seguido de un dígito
-        // (así '1...3' y 'term.out' no se confunden con un decimal).
+        // (así '1...3' y 'Term.out' no se confunden con un decimal).
         if (Peek() == '.' && char.IsDigit(PeekNext()))
         {
             Advance(); // consume el '.'

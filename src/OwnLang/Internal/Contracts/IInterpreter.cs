@@ -13,6 +13,6 @@ internal interface IInterpreter
     /// <c>Main</c> exists, or on an evaluation error (undefined variable,
     /// unsupported operation/call).
     /// </summary>
-    /// <param name="program">The AST root to execute.</param>
-    void Interpret(ProgramDecl program);
+    /// <param name="unit">The AST root to execute.</param>
+    void Interpret(CompilationUnit unit);
 }
