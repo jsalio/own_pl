@@ -185,6 +185,8 @@ internal sealed class Interpreter : IInterpreter
             Call c => EvaluateCall(c),
             BooleanLiteral b => b.Value,
             CharLiteral c => c.Value,
+            Logical l => EvaluateLogical(l),
+            Unary u => EvaluateUnary(u),
             _ => throw new System.Exception(
                      $"Expresión no soportada: {expr.GetType().Name}")
         };
@@ -297,6 +299,21 @@ internal sealed class Interpreter : IInterpreter
 
         return result;
     }
+
+    private object? EvaluateLogical(Logical l)
+    {
+        bool left = IsTruthy(Evaluate(l.Left));
+        return l.Operator == TokenType.OR
+            ? left || IsTruthy(Evaluate(l.Right))
+            : left && IsTruthy(Evaluate(l.Right));
+    }
+
+    private object? EvaluateUnary(Unary u)
+    {
+        object? rightValue = Evaluate(u.Right);
+        return !IsTruthy(rightValue);
+    }
+
     #endregion
 
     #region Numeric operations (aritmética por tipo + clasificación)

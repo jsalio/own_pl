@@ -161,6 +161,8 @@ Two families of nodes:
 | `BooleanLiteral` | a boolean: `true`, `false` |
 | `Variable` | a reference to a name: `val1` |
 | `Binary` | a binary operation: `val1 + val2`, `a == b`, `x < 3` |
+| `Logical` | a short-circuiting logical op: `a && b`, `a \|\| b` |
+| `Unary` | a unary prefix op: `!flag` |
 | `Assign` | an assignment to an existing variable: `x = x + 1` |
 | `MemberAccess` | member access: `term.out` |
 | `Call` | a call: `out(result)` |
@@ -203,11 +205,14 @@ stopStmt       → "stop" ";"
 exprStmt       → expression ";"
 
 expression     → assignment
-assignment     → IDENT "=" assignment | equality
+assignment     → IDENT "=" assignment | logicOr
+logicOr        → logicAnd ( "||" logicAnd )*
+logicAnd       → equality ( "&&" equality )*
 equality       → comparison ( ( "==" | "!=" ) comparison )*
 comparison     → additive ( ( "<" | "<=" | ">" | ">=" ) additive )*
 additive       → multiplicative ( ( "+" | "-" ) multiplicative )*
-multiplicative → call ( ( "*" | "/" ) call )*
+multiplicative → unary ( ( "*" | "/" ) unary )*
+unary          → "!" unary | call
 call           → primary ( "." IDENT | "(" arguments? ")" )*
 arguments      → expression ( "," expression )*
 primary        → NUMBER | STRING | "true" | "false" | IDENT | "(" expression ")"
@@ -222,9 +227,11 @@ primary        → NUMBER | STRING | "true" | "false" | IDENT | "(" expression "
 ## Current limitations
 
 - Arithmetic (`+ - * /`), comparison (`< <= > >=`) and equality (`== !=`)
-  operators. No logical operators (`&&`, `||`, `!`) yet. `+` concatenates when
-  either operand is a string, coercing the other via `ToString()` (`"n" + 35` →
-  `"n35"`); otherwise it is integer addition.
+  operators. `+` concatenates when either operand is a string, coercing the other
+  via `ToString()` (`"n" + 35` → `"n35"`); otherwise it is integer addition.
+- Logical operators `&&`, `||` (short-circuiting) and unary `!`. Operands must be
+  booleans (no truthiness coercion — `5 && true` is an error). `&&` binds tighter
+  than `||`, and `!` binds tighter than the comparison/equality operators.
 - Integers come in 32-bit (`int`/`uint`) and 64-bit (`long`/`ulong`), signed and
   unsigned. **Integer** arithmetic is **checked**: any overflow — at declaration
   (`uint x = 0 - 1;`) or in an operation (`2000000000 + 2000000000`) — throws
@@ -274,7 +281,8 @@ primary        → NUMBER | STRING | "true" | "false" | IDENT | "(" expression "
   assignment (`x = expr`, mutating an existing binding via `Assign`).
 - [x] User-defined functions with typed parameters and `return` (each call runs in
   an `Environment` child of the global scope; `return` unwinds via `ReturnSignal`).
-- [ ] Logical operators: `&&`, `||`, `!`.
+- [x] Logical operators: `&&`, `||` (short-circuiting, via a `Logical` node) and
+  unary `!` (via a `Unary` node), with `logicOr`/`logicAnd`/`unary` precedence levels.
 - [ ] Real objects instead of the `term.out` shortcut.
 - [ ] Read `.own` source files and/or a REPL.
 

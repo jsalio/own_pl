@@ -119,6 +119,10 @@ public enum TokenType
     GREATER,
     /// <summary>Not operator</summary>
     BANG,
+    /// <summary>And operator</summary>
+    AND,
+    /// <summary>Or operator</summary>
+    OR,
 
     #endregion
 
@@ -128,6 +132,8 @@ public enum TokenType
     TRUE,
     /// <summary>Boolean false value</summary>
     FALSE,
+
+
 
     #endregion
 

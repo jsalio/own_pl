@@ -280,7 +280,7 @@ internal sealed class Parser : IParser
     // Assignment -> IDENTIFIER "=" Assignment | Equality  (lowest precedence, right-assoc)
     private Expr Assignment()
     {
-        Expr expr = Equality();
+        Expr expr = LogicOr();
 
         if (Match(TokenType.EQUAL))
         {
@@ -291,6 +291,29 @@ internal sealed class Parser : IParser
             throw new System.Exception("Destino de asignación inválido");
         }
 
+        return expr;
+    }
+
+    private Expr LogicOr()
+    {
+        Expr expr = LogicAnd();
+        while (Match(TokenType.OR))
+        {
+            Expr right = LogicAnd();
+            expr = new Logical(expr, TokenType.OR, right);
+        }
+        return expr;
+    }
+
+    // LogicAnd -> Equality ( "&&" Equality )*
+    private Expr LogicAnd()
+    {
+        Expr expr = Equality();
+        while (Match(TokenType.AND))
+        {
+            Expr right = Equality();
+            expr = new Logical(expr, TokenType.AND, right);
+        }
         return expr;
     }
 
@@ -344,16 +367,26 @@ internal sealed class Parser : IParser
 
     private Expr Multiplicative()
     {
-        Expr expr = Call();
+        Expr expr = Unary(); //Call();
 
         while (Match(TokenType.STAR, TokenType.SLASH))
         {
             TokenType op = Previous().Type;
-            Expr right = Call();
+            Expr right = Unary(); //Call();
             expr = new Binary(expr, op, right);
         }
 
         return expr;
+    }
+
+    private Expr Unary()
+    {
+        if (Match(TokenType.BANG))
+        {
+            Expr operand = Unary(); // permite !!x
+            return new Unary(TokenType.BANG, operand);
+        }
+        return Call();
     }
 
     // Call -> Primary ( "." IDENTIFIER | "(" argumentos ")" )*
