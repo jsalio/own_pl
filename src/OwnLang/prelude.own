@@ -1,0 +1,38 @@
+def contract ITerminal {
+    function empty out(string message);
+}
+
+def contract IMath {
+    function int Abs(int n);
+    function int Max(int a, int b);
+    function int Min(int a, int b);
+}
+
+def module Term:ITerminal {
+    external function empty out(string message);
+}
+
+def module Math:IMath {
+    
+    function int Abs(int n) {
+        when(n < 0){
+            return 0 - n;
+        }
+        return n;
+    }
+
+    function int Max(int a, int b){
+        when(a > b){
+            return a;
+        }
+        return b;
+    }
+
+    function int Min(int a, int b){
+        when(a < b){
+            return a;
+        }
+        return b;
+    }
+
+}

@@ -64,7 +64,71 @@ internal sealed class Interpreter : IInterpreter
     public Interpreter()
     {
         environment = globals;
-        RegisterBuiltins();
+        RegisterNatives();
+        LoadPrelude();
+    }
+
+    /// <summary>Registers the native (C#) implementations of external functions.</summary>
+    /// <remarks>The module declarations that use them (e.g. <c>Term</c>) live in the prelude; here we only bind the primitives.</remarks>
+    private void RegisterNatives()
+    {
+        natives["Term.out"] = args =>
+        {
+            object? message = args.Count > 0 ? args[0] : null;
+            System.Console.WriteLine(Stringify(message));
+            return null;
+        };
+    }
+
+    /// <summary>Loads the embedded <c>prelude.own</c> and registers its declarations.</summary>
+    /// <remarks>
+    /// Runs once per interpreter, before any user program, so the standard library
+    /// (the <c>Term</c> module, <c>Math</c>, …) is always available. The prelude is
+    /// ordinary Own_Lang source parsed with the same lexer/parser; its <c>external</c>
+    /// functions bind to the natives registered in <see cref="RegisterNatives"/>.
+    /// </remarks>
+    private void LoadPrelude()
+    {
+        string source = ReadPreludeSource();
+        var tokens = new Lexer(source).Tokenize();
+        var prelude = new Parser(tokens).ParsePrelude();
+        RegisterDeclarations(prelude.Contracts, prelude.Modules);
+    }
+
+    /// <summary>Registers contracts and modules into their tables and validates the modules.</summary>
+    /// <remarks>Shared by the prelude loader and <see cref="Interpret"/>; a name already present (a prelude/built-in) is a redefinition error.</remarks>
+    private void RegisterDeclarations(
+        IReadOnlyList<ContractDecl> contractDecls, IReadOnlyList<ModuleDecl> moduleDecls)
+    {
+        foreach (var contract in contractDecls)
+        {
+            if (contracts.ContainsKey(contract.Name))
+                throw new System.Exception(
+                    $"Runtime error: contract '{contract.Name}' is already defined");
+            contracts[contract.Name] = contract;
+        }
+
+        foreach (var module in moduleDecls)
+        {
+            if (modules.ContainsKey(module.Name))
+                throw new System.Exception(
+                    $"Runtime error: module '{module.Name}' is already defined");
+            modules[module.Name] = module;
+        }
+
+        foreach (var module in moduleDecls)
+            ValidateModule(module);
+    }
+
+    // Reads the embedded prelude.own resource shipped inside the assembly.
+    private static string ReadPreludeSource()
+    {
+        var assembly = typeof(Interpreter).Assembly;
+        string name = assembly.GetManifestResourceNames()
+            .First(resource => resource.EndsWith("prelude.own", System.StringComparison.OrdinalIgnoreCase));
+        using var stream = assembly.GetManifestResourceStream(name)!;
+        using var reader = new StreamReader(stream);
+        return reader.ReadToEnd();
     }
 
     /// <summary>
@@ -97,30 +161,6 @@ internal sealed class Interpreter : IInterpreter
         return null;
     }
 
-    /// <summary>
-    /// Registers the built-in functions and modules.
-    /// </summary>
-    /// <remarks>
-    /// This method registers the primitive modules that land in C# (the "native stdlib").
-    /// This is the seam where a future prelude in .own will plug in.
-    /// </remarks>
-    private void RegisterBuiltins()
-    {
-        // def module Term { external function empty out(string message); }
-        var outFn = new FunctionDecl("empty", "out",
-            new List<Param> { new Param("string", "message") },
-            new Block(new List<Stmt>()), IsExternal: true);
-        modules["Term"] = new ModuleDecl("Term", null,
-            new List<FunctionDecl> { outFn });
-
-        natives["Term.out"] = args =>
-        {
-            object? message = args.Count > 0 ? args[0] : null;
-            System.Console.WriteLine(Stringify(message));
-            return null;
-        };
-    }
-
     /// <inheritdoc/>
     /// <remarks>
     /// The interpreter's driver. It runs in phases before executing anything: first it registers every
@@ -134,31 +174,13 @@ internal sealed class Interpreter : IInterpreter
         ProgramDecl? program = unit.Program;
         FunctionDecl? main = null;
 
-
         foreach (var decl in program.Declarations)
         {
             if (decl is FunctionDecl fn)
                 functions[fn.Name] = fn;
         }
 
-        foreach (var contract in unit.Contracts)
-        {
-            if (contracts.ContainsKey(contract.Name))
-                throw new System.Exception(
-                    $"Runtime error: contract '{contract.Name}' is already defined");
-            contracts[contract.Name] = contract;
-        }
-
-        foreach (var module in unit.Modules)
-        {
-            if (modules.ContainsKey(module.Name))
-                throw new System.Exception(
-                    $"Runtime error: module '{module.Name}' is already defined");
-            modules[module.Name] = module;
-        }
-
-        foreach (var module in unit.Modules)
-            ValidateModule(module);
+        RegisterDeclarations(unit.Contracts, unit.Modules);
 
         foreach (var decl in unit.Program.Declarations)
         {

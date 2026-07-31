@@ -146,6 +146,7 @@ own_pl/
 │   └── OwnLang/                       Interpreter project (assembly OwnLang)
 │       ├── OwnLang.csproj
 │       ├── Program.cs                 Entry point (picks REPL vs file)
+│       ├── prelude.own               Standard library in Own_Lang (embedded)
 │       ├── Runner.cs                  Reads a .own file and runs the pipeline
 │       ├── Repl.cs                    Interactive read-eval-print loop
 │       ├── LineEditor.cs              REPL line buffer + command history (state)
@@ -261,9 +262,11 @@ primary        → NUMBER | STRING | "true" | "false" | IDENT | "(" expression "
 ## Execution conventions
 
 - The interpreter looks for the `Main` function inside `def program` and executes its body.
-- `Term.out(x)` prints `x` to the console. `Term` is a built-in **module** with an
-  `external` function `out` bound to a native (C#) implementation — no longer a
-  hardcoded call-site special case.
+- `Term.out(x)` prints `x` to the console. `Term` is declared in the **prelude**
+  (`src/OwnLang/prelude.own`, written in Own_Lang and embedded in the assembly),
+  as an `external` function `out` bound to a native (C#) implementation. The
+  prelude is loaded into every interpreter before any user code, so its modules
+  (`Term`, `Math`, …) are always available; only the native primitives live in C#.
 
 ## Current limitations
 
@@ -334,9 +337,11 @@ primary        → NUMBER | STRING | "true" | "false" | IDENT | "(" expression "
 - [x] Standard library v1: `def contract` / `def module` / `external` functions.
   `Term` is now a built-in module (`external out` bound to a native), replacing the
   hardcoded `Term.out` shortcut. Static namespace resolution; contracts validated.
+- [x] A prelude written in `.own` (`src/OwnLang/prelude.own`, embedded in the
+  assembly) that declares the standard-library modules (`Term`, `Math`). Loaded
+  into every interpreter before user code; only the native primitives stay in C#.
 - [ ] Modules as first-class values + dynamic dispatch by contract
   (`let t: ITerminal = Term;`).
-- [ ] A prelude written in `.own` that declares the built-in modules (needs file reading).
 - [x] Read `.own` source files: `dotnet run --project src/OwnLang -- file.own`
   (see `Runner`, with `--ast` to dump the tree and clean error reporting).
 - [x] A REPL (interactive read-eval-print loop): `dotnet run --project src/OwnLang`

@@ -129,21 +129,73 @@ internal sealed class Parser : IParser
     /// </remarks>
     public CompilationUnit Parse()
     {
+        var (program, contract, modules) = TopLevel();
+        if (program is null)
+            throw new System.Exception("expected a program");
+        return new CompilationUnit(program, contract, modules);
+
+        // ProgramDecl? program = null;
+        // var contracts = new List<ContractDecl>();
+        // var modules = new List<ModuleDecl>();
+
+        // while (!IsAtEnd())
+        // {
+        //     var token = Consume(TokenType.DEF, "expected 'def' at the start of the program");
+        //     if (Match(TokenType.CONTRACT))
+        //     {
+        //         contracts.Add(ContractDeclaration());
+        //     }
+        //     else if (Match(TokenType.MODULE))
+        //     {
+        //         modules.Add(ModuleDeclaration());
+        //     }
+        //     else
+        //     {
+        //         if (program is not null)
+        //             throw new System.Exception("only one program is allowed");
+        //         program = Program();
+        //     }
+        // }
+
+        // if (program is null)
+        //     throw new System.Exception("expected a program");
+        // return new CompilationUnit(program, contracts, modules);
+
+    }
+
+    /// <summary>
+    /// Parses a prelude: top-level contracts and modules with <b>no</b> program.
+    /// </summary>
+    /// <remarks>
+    /// The standard-library prelude has no <c>Main</c>; it only declares contracts
+    /// and modules to be registered before the user program runs. Reusing the same
+    /// top-level loop keeps prelude and program syntax identical.
+    /// </remarks>
+    public (IReadOnlyList<ContractDecl> Contracts, IReadOnlyList<ModuleDecl> Modules) ParsePrelude()
+    {
+        var (program, contracts, modules) = TopLevel();
+        if (program is not null)
+            throw new System.Exception("the prelude must not contain a program");
+        return (contracts, modules);
+    }
+
+
+    /// <summary>
+    /// 
+    /// </summary>
+    private (ProgramDecl?, List<ContractDecl>, List<ModuleDecl>) TopLevel()
+    {
         ProgramDecl? program = null;
         var contracts = new List<ContractDecl>();
         var modules = new List<ModuleDecl>();
 
         while (!IsAtEnd())
         {
-            var token = Consume(TokenType.DEF, "expected 'def' at the start of the program");
+            Consume(TokenType.DEF, "expected 'def' at the start of the program");
             if (Match(TokenType.CONTRACT))
-            {
                 contracts.Add(ContractDeclaration());
-            }
             else if (Match(TokenType.MODULE))
-            {
                 modules.Add(ModuleDeclaration());
-            }
             else
             {
                 if (program is not null)
@@ -152,10 +204,7 @@ internal sealed class Parser : IParser
             }
         }
 
-        if (program is null)
-            throw new System.Exception("expected a program");
-        return new CompilationUnit(program, contracts, modules);
-
+        return (program, contracts, modules);
     }
 
     #endregion

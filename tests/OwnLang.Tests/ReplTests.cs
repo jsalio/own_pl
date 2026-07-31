@@ -138,4 +138,12 @@ public class ReplTests
 
         Assert.That(output, Does.Contain("20"));
     }
+
+    [Test]
+    public void PreludeIsAvailableInTheRepl()
+    {
+        // Math comes from the prelude, so it works without defining anything.
+        var (output, _) = Feed("Math.Abs(0 - 9);\nexit\n");
+        Assert.That(output, Does.Contain("9"));
+    }
 }
