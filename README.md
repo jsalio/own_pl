@@ -58,7 +58,12 @@ dumps the parsed top-level declarations before running. This lives in
 type one statement per line and see the result. Bindings persist across lines,
 so `let x = 5;` then `x + 1;` prints `6`; an expression statement echoes its
 value; a parse/runtime error is reported without ending the session; `exit` or
-`quit` (or EOF) leaves it. `Program.cs` is a thin shell that picks REPL vs file.
+`quit` (or Ctrl+D) leaves it. On a real terminal it supports **line editing and
+history**: ←/→ and Home/End move within the line, Backspace/Delete edit it, and
+↑/↓ recall previous commands. The editing state (a line buffer with a cursor,
+plus a command history) lives in `LineEditor`; `ConsoleLineReader` drives it key
+by key, while redirected input (a pipe or file) falls back to plain line reads.
+`Program.cs` is a thin shell that picks REPL vs file.
 
 ## Testing
 
@@ -141,6 +146,9 @@ own_pl/
 │       ├── Program.cs                 Entry point (picks REPL vs file)
 │       ├── Runner.cs                  Reads a .own file and runs the pipeline
 │       ├── Repl.cs                    Interactive read-eval-print loop
+│       ├── LineEditor.cs              REPL line buffer + command history (state)
+│       ├── LineReader.cs              ILineReader + plain TextReader reader
+│       ├── ConsoleLineReader.cs       Terminal line editor (arrows + history)
 │       └── Internal/
 │           ├── Token.cs               A token (type, lexeme, line, column)
 │           ├── TokenTypes.cs          enum TokenType (all categories)
@@ -330,7 +338,8 @@ primary        → NUMBER | STRING | "true" | "false" | IDENT | "(" expression "
 - [x] Read `.own` source files: `dotnet run --project src/OwnLang -- file.own`
   (see `Runner`, with `--ast` to dump the tree and clean error reporting).
 - [x] A REPL (interactive read-eval-print loop): `dotnet run --project src/OwnLang`
-  (see `Repl`; one statement per line, state persists across lines).
+  (see `Repl`; one statement per line, state persists across lines, with line
+  editing and command history on a real terminal via `LineEditor`).
 
 ## Reference
 
