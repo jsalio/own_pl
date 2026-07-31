@@ -1,5 +1,6 @@
 using NUnit.Framework;
 using Own_Lang.Internal;
+using Own_Lang.Internal.AST;
 
 namespace OwnLang.Tests;
 
