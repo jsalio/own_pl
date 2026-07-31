@@ -57,9 +57,9 @@ internal static class Repl
                 string? result = interpreter.RunReplLine(statement);
                 if (result is not null) output.WriteLine(result);
             }
-            catch (Exception e)
+            catch (Exception exception)
             {
-                error.WriteLine($"error: {e.Message}");
+                error.WriteLine($"error: {exception.Message}");
             }
         }
 

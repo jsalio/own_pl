@@ -40,9 +40,9 @@ internal sealed class LineEditor
     public IReadOnlyList<string> History => history;
 
     /// <summary>Inserts a character at the cursor and advances past it.</summary>
-    public void Insert(char c)
+    public void Insert(char character)
     {
-        buffer.Insert(cursor, c);
+        buffer.Insert(cursor, character);
         cursor++;
     }
 
