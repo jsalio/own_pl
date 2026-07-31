@@ -1,3 +1,5 @@
+using Own_Lang.Internal.AST;
+
 namespace Own_Lang.Internal.Contracts;
 
 /// <summary>

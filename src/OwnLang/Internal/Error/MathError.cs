@@ -1,4 +1,4 @@
-namespace Own_Lang.Internal;
+namespace Own_Lang.Internal.Error;
 
 /// <summary>
 /// Runtime error raised by an invalid arithmetic operation (e.g. division by

@@ -6,6 +6,17 @@ namespace Own_Lang.Internal;
 /// meaning, while for identifiers, numbers and strings the lexeme holds the
 /// concrete content.
 /// </summary>
+/// <remarks>
+/// This enum is the shared vocabulary between the lexer (which assigns a type to
+/// each token) and the parser (which decides grammar rules by matching on it), so
+/// adding a language feature usually starts by adding a value here. The
+/// <c>#region</c> groups are purely organizational — the compiler ignores them —
+/// but they mirror how the lexer produces tokens: keywords and type names are
+/// resolved via the lexer's keyword table, symbols and multi-character operators
+/// are scanned character by character, and literals/identifiers carry their value
+/// in the lexeme. <see cref="EOF"/> is special: it terminates every stream and is
+/// how the parser knows input has ended.
+/// </remarks>
 public enum TokenType
 {
     #region Keywords
@@ -82,7 +93,7 @@ public enum TokenType
 
     /// <summary>An identifier: a variable or function name (e.g. <c>val1</c>).</summary>
     IDENTIFIER,
-    /// <summary>An integer literal (e.g. <c>123</c>).</summary>
+    /// <summary>A numeric literal — integer, decimal, or <c>f</c>-suffixed float (e.g. <c>123</c>, <c>3.14</c>, <c>5f</c>); the exact kind is classified later from the lexeme.</summary>
     NUMBER,
     /// <summary>A string literal, including its surrounding quotes in the lexeme.</summary>
     STRING,
@@ -112,25 +123,25 @@ public enum TokenType
 
     #endregion
 
-    #region Comparison operators
+    #region Comparison & logical operators
 
-    /// <summary>Equal operator</summary>
+    /// <summary>Equality operator <c>==</c>.</summary>
     EQUAL_EQUAL,
-    /// <summary>Less than operator</summary>
+    /// <summary>Less-than-or-equal operator <c>&lt;=</c>.</summary>
     LESS_EQUAL,
-    /// <summary>Greater than operator</summary>
+    /// <summary>Greater-than-or-equal operator <c>&gt;=</c>.</summary>
     GREATER_EQUAL,
-    /// <summary>Not equal operator</summary>
+    /// <summary>Inequality operator <c>!=</c>.</summary>
     BANG_EQUAL,
-    /// <summary>Less than operator</summary>
+    /// <summary>Less-than operator <c>&lt;</c>.</summary>
     LESS,
-    /// <summary>Greater than operator</summary>
+    /// <summary>Greater-than operator <c>&gt;</c>.</summary>
     GREATER,
-    /// <summary>Not operator</summary>
+    /// <summary>Logical NOT operator <c>!</c> (prefix, strict boolean).</summary>
     BANG,
-    /// <summary>And operator</summary>
+    /// <summary>Logical AND operator <c>&amp;&amp;</c> (short-circuiting).</summary>
     AND,
-    /// <summary>Or operator</summary>
+    /// <summary>Logical OR operator <c>||</c> (short-circuiting).</summary>
     OR,
 
     #endregion

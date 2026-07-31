@@ -13,6 +13,9 @@ internal sealed class Lexer : ILexer
 {
     #region State
 
+    /// <summary>
+    /// Reserved words and their corresponding token.
+    /// </summary>
     private static readonly Dictionary<string, TokenType> Keywords = new()
     {
         ["def"] = TokenType.DEF,
@@ -40,14 +43,39 @@ internal sealed class Lexer : ILexer
         ["external"] = TokenType.EXTERNAL,
     };
 
+    /// <summary>
+    /// Source text.
+    /// </summary>
     private readonly string source;
+
+    /// <summary>
+    /// List of tokens.
+    /// </summary>
     private readonly List<Token> tokens = new();
 
+    /// <summary>
+    /// Start position of the current token.
+    /// </summary>
     private int start = 0;
+
+    /// <summary>
+    /// Current cursor position.
+    /// </summary>
     private int current = 0;
+
+    /// <summary>
+    /// Current line.
+    /// </summary>
     private int line = 1;
+
+    /// <summary>
+    /// Current column.
+    /// </summary>
     private int column = 1;
 
+    /// <summary>
+    /// Delimiter character for char literals.
+    /// </summary>
     private const char CHARDEFINITION = '\'';
 
     #endregion
@@ -77,8 +105,18 @@ internal sealed class Lexer : ILexer
 
     #endregion
 
-    #region Scanning (un token a la vez)
+    #region Scanning (one token at a time)
 
+    /// <summary>
+    /// Scan next token.
+    /// </summary>
+    /// <remarks>
+    /// Scans one token at a time, using the <c>current</c> cursor and the
+    /// <c>start</c> marker to delimit the current token.
+    /// </remarks>
+    /// <exception cref="System.Exception">
+    /// Throws an exception if an unexpected character is encountered.
+    /// </exception>
     private void ScanToken()
     {
         char c = Advance();
@@ -93,14 +131,12 @@ internal sealed class Lexer : ILexer
             case '!': AddToken(Match('=') ? TokenType.BANG_EQUAL : TokenType.BANG); break;
             case '<': AddToken(Match('=') ? TokenType.LESS_EQUAL : TokenType.LESS); break;
             case '>': AddToken(Match('=') ? TokenType.GREATER_EQUAL : TokenType.GREATER); break;
-            // case '&': AddToken(Match('&') ? TokenType.AND : TokenType.AND); break;
-            // case '|': AddToken(Match('|') ? TokenType.OR : TokenType.OR); break;
             case '+': AddToken(TokenType.PLUS); break;
             case '-': AddToken(TokenType.MINUS); break;
             case '.':
                 if (Match('.'))
                 {
-                    // vimos ".."; exigimos el tercer punto para formar "..."
+                    // saw ".."; require the third dot to form "..."
                     if (!Match('.'))
                     {
                         throw new System.Exception(
@@ -126,7 +162,7 @@ internal sealed class Lexer : ILexer
             case ' ':
             case '\t':
             case '\r':
-                // espacios en blanco: se ignoran
+                // whitespace: ignored
                 break;
 
             case '\n':
@@ -168,6 +204,16 @@ internal sealed class Lexer : ILexer
         }
     }
 
+    /// <summary>
+    /// Reads consecutive digits to form a number.
+    /// </summary>
+    /// <remarks>
+    /// If there are digits after the dot, forms a decimal number.
+    /// If there is an 'f' or 'F' suffix, forms a float.
+    /// </remarks>
+    /// <exception cref="System.Exception">
+    /// Throws an exception if an unexpected character is encountered.
+    /// </exception>
     private void Number()
     {
         while (char.IsDigit(Peek()))
@@ -175,18 +221,18 @@ internal sealed class Lexer : ILexer
             Advance();
         }
 
-        // Parte fraccionaria: solo si el '.' va seguido de un dígito
-        // (así '1...3' y 'Term.out' no se confunden con un decimal).
+        // Fractional part: only if the '.' is followed by a digit
+        // (so '1...3' and 'Term.out' are not mistaken for a decimal).
         if (Peek() == '.' && char.IsDigit(PeekNext()))
         {
-            Advance(); // consume el '.'
+            Advance(); // consume the '.'
             while (char.IsDigit(Peek()))
             {
                 Advance();
             }
         }
 
-        // Sufijo de float: 3.14f o 5f
+        // Float suffix: 3.14f or 5f
         if (Peek() == 'f' || Peek() == 'F')
         {
             Advance();
@@ -195,6 +241,16 @@ internal sealed class Lexer : ILexer
         AddToken(TokenType.NUMBER);
     }
 
+    /// <summary>
+    /// Scans a string.
+    /// </summary>
+    /// <remarks>
+    /// Reads consecutive characters until a closing quote is found.
+    /// If there is a line break, increments the line counter.
+    /// </remarks>
+    /// <exception cref="System.Exception">
+    /// Throws an exception if an unexpected character is encountered.
+    /// </exception>
     private void String()
     {
         while (Peek() != '"' && !IsAtEnd())
@@ -213,11 +269,21 @@ internal sealed class Lexer : ILexer
                 $"String sin cerrar en la línea {line}, columna {column}");
         }
 
-        Advance(); // consume la comilla de cierre "
+        Advance(); // consume the closing quote "
 
         AddToken(TokenType.STRING);
     }
 
+    /// <summary>
+    /// Scans a char.
+    /// </summary>
+    /// <remarks>
+    /// Reads characters until a single quote is found.
+    /// If there is a line break, increments the line counter.
+    /// </remarks>
+    /// <exception cref="System.Exception">
+    /// Throws an exception if an unexpected character is encountered.
+    /// </exception>
     private void Char()
     {
         if (IsAtEnd() || Peek() == CHARDEFINITION)
@@ -228,6 +294,12 @@ internal sealed class Lexer : ILexer
         AddToken(TokenType.CHAR);
     }
 
+    /// <summary>
+    /// Scans an identifier.
+    /// </summary>
+    /// <remarks>
+    /// Reads consecutive characters until a non-alphanumeric character is found.
+    /// </remarks>
     private void Identifier()
     {
         while (IsAlphaNumeric(Peek()))
@@ -247,9 +319,19 @@ internal sealed class Lexer : ILexer
 
     #region Character classification
 
+    /// <summary>
+    /// Checks if a character is an alphabet letter.
+    /// </summary>
+    /// <param name="c">The character to check.</param>
+    /// <returns>True if the character is a letter, false otherwise.</returns>
     private static bool IsAlpha(char c)
         => char.IsLetter(c) || c == '_';
 
+    /// <summary>
+    /// Checks if a character is an alphabet letter or a digit.
+    /// </summary>
+    /// <param name="c">The character to check.</param>
+    /// <returns>True if the character is a letter or a digit, false otherwise.</returns>
     private static bool IsAlphaNumeric(char c)
         => IsAlpha(c) || char.IsDigit(c);
 
@@ -257,32 +339,57 @@ internal sealed class Lexer : ILexer
 
     #region Cursor & helpers
 
+    /// <summary>
+    /// Checks if the lexer has reached the end of the source code.
+    /// </summary>
+    /// <returns>True if the lexer is at the end of the source code, false otherwise.</returns>
     private bool IsAtEnd() => current >= source.Length;
 
+    /// <summary>
+    /// Advances the lexer to the next character.
+    /// </summary>
+    /// <returns>The next character in the source code.</returns>
     private char Advance()
     {
         column++;
         return source[current++];
     }
 
+    /// <summary>
+    /// Peeks at the next character without advancing the lexer.
+    /// </summary>
+    /// <returns>The next character in the source code, or '\0' if the lexer is at the end of the source code.</returns>
     private char Peek()
     {
         if (IsAtEnd()) return '\0';
         return source[current];
     }
 
+    /// <summary>
+    /// Peeks at the next character without advancing the lexer.
+    /// </summary>
+    /// <returns>The next character in the source code, or '\0' if the lexer is at the end of the source code.</returns>
     private char PeekNext()
     {
         if (current + 1 >= source.Length) return '\0';
         return source[current + 1];
     }
 
+    /// <summary>
+    /// Adds a token to the list of tokens.
+    /// </summary>
+    /// <param name="type">The type of the token.</param>
     private void AddToken(TokenType type)
     {
         string lexeme = source.Substring(start, current - start);
         tokens.Add(new Token(type, lexeme, line, column));
     }
 
+    /// <summary>
+    /// Checks if the next character in the source code matches the expected character.
+    /// </summary>
+    /// <param name="expected">The character to match.</param>
+    /// <returns>True if the next character matches the expected character, false otherwise.</returns>
     private bool Match(char expected)
     {
         if (IsAtEnd()) return false;
