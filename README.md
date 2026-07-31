@@ -39,19 +39,31 @@ The repository is a solution (`OwnLang.sln`) with the interpreter under
 
 ```bash
 dotnet build                                        # build the whole solution
+dotnet run --project src/OwnLang                             # start the REPL
 dotnet run --project src/OwnLang -- examples/hello.own        # run a .own file
 dotnet run --project src/OwnLang -- examples/hello.own --ast  # also dump the AST
 ```
 
 `dotnet run` needs `--project` because the solution sits at the root with no
-project file there; everything after `--` is passed to the program. The
-interpreter reads the `.own` source file named as the first argument and runs it
-through the full pipeline (source → tokens → AST → execution), printing the
+project file there; everything after `--` is passed to the program.
+
+**With a file argument**, the interpreter reads that `.own` source file and runs
+it through the full pipeline (source → tokens → AST → execution), printing the
 program's output. It exits non-zero with a one-line `error: ...` message on a
 missing/invalid file or a lex/parse/runtime error; the optional `--ast` flag
-dumps the parsed top-level declarations before running. The file-reading logic
-lives in `src/OwnLang/Runner.cs`; `Program.cs` is just a thin shell that forwards
-the arguments.
+dumps the parsed top-level declarations before running. This lives in
+`src/OwnLang/Runner.cs`.
+
+**With no argument**, it starts an interactive **REPL** (`src/OwnLang/Repl.cs`):
+type one statement per line and see the result. Bindings persist across lines,
+so `let x = 5;` then `x + 1;` prints `6`; an expression statement echoes its
+value; a parse/runtime error is reported without ending the session; `exit` or
+`quit` (or Ctrl+D) leaves it. On a real terminal it supports **line editing and
+history**: ←/→ and Home/End move within the line, Backspace/Delete edit it, and
+↑/↓ recall previous commands. The editing state (a line buffer with a cursor,
+plus a command history) lives in `LineEditor`; `ConsoleLineReader` drives it key
+by key, while redirected input (a pipe or file) falls back to plain line reads.
+`Program.cs` is a thin shell that picks REPL vs file.
 
 ## Testing
 
@@ -131,8 +143,12 @@ own_pl/
 ├── src/
 │   └── OwnLang/                       Interpreter project (assembly OwnLang)
 │       ├── OwnLang.csproj
-│       ├── Program.cs                 Entry point (thin shell over Runner)
+│       ├── Program.cs                 Entry point (picks REPL vs file)
 │       ├── Runner.cs                  Reads a .own file and runs the pipeline
+│       ├── Repl.cs                    Interactive read-eval-print loop
+│       ├── LineEditor.cs              REPL line buffer + command history (state)
+│       ├── LineReader.cs              ILineReader + plain TextReader reader
+│       ├── ConsoleLineReader.cs       Terminal line editor (arrows + history)
 │       └── Internal/
 │           ├── Token.cs               A token (type, lexeme, line, column)
 │           ├── TokenTypes.cs          enum TokenType (all categories)
@@ -321,7 +337,9 @@ primary        → NUMBER | STRING | "true" | "false" | IDENT | "(" expression "
 - [ ] A prelude written in `.own` that declares the built-in modules (needs file reading).
 - [x] Read `.own` source files: `dotnet run --project src/OwnLang -- file.own`
   (see `Runner`, with `--ast` to dump the tree and clean error reporting).
-- [ ] A REPL (interactive read-eval-print loop).
+- [x] A REPL (interactive read-eval-print loop): `dotnet run --project src/OwnLang`
+  (see `Repl`; one statement per line, state persists across lines, with line
+  editing and command history on a real terminal via `LineEditor`).
 
 ## Reference
 

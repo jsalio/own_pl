@@ -68,6 +68,28 @@ internal sealed class Interpreter : IInterpreter
     }
 
     /// <summary>
+    /// Runs one REPL statement against the current (persistent) environment and
+    /// returns its printable value, or null when there is nothing to print.
+    /// </summary>
+    /// <remarks>
+    /// Reuses the same interpreter instance across lines, so a <c>let</c> binds into
+    /// the long-lived global scope and stays visible on later lines. An expression
+    /// statement returns its evaluated value (so the REPL can echo it); every other
+    /// statement runs for its effect and returns null.
+    /// </remarks>
+    public string? RunReplLine(Stmt statement)
+    {
+        if (statement is ExpressionStmt expr)
+        {
+            object? value = Evaluate(expr.Expression);
+            return value is null ? null : Stringify(value);
+        }
+
+        Execute(statement);
+        return null;
+    }
+
+    /// <summary>
     /// Registers the built-in functions and modules.
     /// </summary>
     /// <remarks>
