@@ -38,14 +38,20 @@ The repository is a solution (`OwnLang.sln`) with the interpreter under
 `src/OwnLang`. From the repo root:
 
 ```bash
-dotnet build                      # build the whole solution
-dotnet run --project src/OwnLang  # execute the interpreter
+dotnet build                                        # build the whole solution
+dotnet run --project src/OwnLang -- examples/hello.own        # run a .own file
+dotnet run --project src/OwnLang -- examples/hello.own --ast  # also dump the AST
 ```
 
 `dotnet run` needs `--project` because the solution sits at the root with no
-project file there. The code to interpret is defined as a string inside
-`src/OwnLang/Program.cs`, which wires up the full pipeline:
-source → tokens → AST → execution.
+project file there; everything after `--` is passed to the program. The
+interpreter reads the `.own` source file named as the first argument and runs it
+through the full pipeline (source → tokens → AST → execution), printing the
+program's output. It exits non-zero with a one-line `error: ...` message on a
+missing/invalid file or a lex/parse/runtime error; the optional `--ast` flag
+dumps the parsed top-level declarations before running. The file-reading logic
+lives in `src/OwnLang/Runner.cs`; `Program.cs` is just a thin shell that forwards
+the arguments.
 
 ## Testing
 
@@ -125,21 +131,28 @@ own_pl/
 ├── src/
 │   └── OwnLang/                       Interpreter project (assembly OwnLang)
 │       ├── OwnLang.csproj
-│       ├── Program.cs                 Entry point; wires up the pipeline
+│       ├── Program.cs                 Entry point (thin shell over Runner)
+│       ├── Runner.cs                  Reads a .own file and runs the pipeline
 │       └── Internal/
 │           ├── Token.cs               A token (type, lexeme, line, column)
 │           ├── TokenTypes.cs          enum TokenType (all categories)
 │           ├── Lexer.cs               Lexer : ILexer
 │           ├── Parser.cs              Parser : IParser
-│           ├── Environment.cs         Runtime variables
+│           ├── Environment.cs         Runtime variables (scope chain)
 │           ├── Interpreter.cs         Interpreter : IInterpreter
 │           ├── Ast/
 │           │   ├── Expr.cs            Expressions (produce a value)
 │           │   └── Stmt.cs            Statements (perform actions)
+│           ├── Interrupt/             Control-flow signals
+│           │   ├── BreakSignal.cs     'stop' unwinding
+│           │   └── ReturnSignal.cs    'return' unwinding (carries a value)
+│           ├── Error/                 Typed runtime errors (Math/Overflow/Type)
 │           └── Contracts/
 │               ├── ILexer.cs          interface ILexer
 │               ├── IParser.cs         interface IParser
 │               └── IInterpreter.cs    interface IInterpreter
+├── examples/
+│   └── hello.own                     Sample program to run
 └── tests/
     └── OwnLang.Tests/                 NUnit regression suite
 ```
@@ -306,7 +319,9 @@ primary        → NUMBER | STRING | "true" | "false" | IDENT | "(" expression "
 - [ ] Modules as first-class values + dynamic dispatch by contract
   (`let t: ITerminal = Term;`).
 - [ ] A prelude written in `.own` that declares the built-in modules (needs file reading).
-- [ ] Read `.own` source files and/or a REPL.
+- [x] Read `.own` source files: `dotnet run --project src/OwnLang -- file.own`
+  (see `Runner`, with `--ast` to dump the tree and clean error reporting).
+- [ ] A REPL (interactive read-eval-print loop).
 
 ## Reference
 
