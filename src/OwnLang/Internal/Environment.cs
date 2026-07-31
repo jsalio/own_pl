@@ -96,7 +96,7 @@ internal sealed class Environment
         }
 
         throw new System.Exception(
-            $"Error en tiempo de ejecución: la variable '{name}' no está definida");
+            $"Runtime error: variable '{name}' is not defined");
     }
 
     /// <summary>
@@ -130,6 +130,6 @@ internal sealed class Environment
         }
 
         throw new System.Exception(
-            $"Error en tiempo de ejecución: la variable '{name}' no está definida");
+            $"Runtime error: variable '{name}' is not defined");
     }
 }

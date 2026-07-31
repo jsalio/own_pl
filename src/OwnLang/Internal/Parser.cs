@@ -110,7 +110,7 @@ internal sealed class Parser : IParser
 
         while (!IsAtEnd())
         {
-            var token = Consume(TokenType.DEF, "se esperaba 'def' al inicio del programa");
+            var token = Consume(TokenType.DEF, "expected 'def' at the start of the program");
             if (Match(TokenType.CONTRACT))
             {
                 contracts.Add(ContractDeclaration());
@@ -122,13 +122,13 @@ internal sealed class Parser : IParser
             else
             {
                 if (program is not null)
-                    throw new System.Exception("Solo puede haber un programa");
+                    throw new System.Exception("only one program is allowed");
                 program = Program();
             }
         }
 
         if (program is null)
-            throw new System.Exception("se esperaba un programa");
+            throw new System.Exception("expected a program");
         return new CompilationUnit(program, contracts, modules);
 
     }
@@ -146,8 +146,8 @@ internal sealed class Parser : IParser
     private ProgramDecl Program()
     {
         Token name = Consume(TokenType.IDENTIFIER,
-            "se esperaba el nombre del programa después de 'def'");
-        Consume(TokenType.LBRACE, "se esperaba '{' después del nombre del programa");
+            "expected the program name after 'def'");
+        Consume(TokenType.LBRACE, "expected '{' after the program name");
 
         var declarations = new List<Stmt>();
         while (!Check(TokenType.RBRACE) && !IsAtEnd())
@@ -155,7 +155,7 @@ internal sealed class Parser : IParser
             declarations.Add(Declaration());
         }
 
-        Consume(TokenType.RBRACE, "se esperaba '}' para cerrar el programa");
+        Consume(TokenType.RBRACE, "expected '}' to close the program");
         return new ProgramDecl(name.Lexeme, declarations);
     }
 
@@ -169,14 +169,14 @@ internal sealed class Parser : IParser
     private ContractDecl ContractDeclaration()
     {
         Token name = Consume(TokenType.IDENTIFIER,
-            "se esperaba el nombre del contrato después de 'contract'");
-        Consume(TokenType.LBRACE, "se esperaba '{' después del nombre del contrato");
+            "expected the contract name after 'contract'");
+        Consume(TokenType.LBRACE, "expected '{' after the contract name");
 
         var members = new List<FunctionSig>();
         while (!Check(TokenType.RBRACE) && !IsAtEnd())
             members.Add(FunctionSignature());
 
-        Consume(TokenType.RBRACE, "se esperaba '}' para cerrar el contrato");
+        Consume(TokenType.RBRACE, "expected '}' to close the contract");
         return new ContractDecl(name.Lexeme, members);
     }
 
@@ -189,12 +189,12 @@ internal sealed class Parser : IParser
     /// </remarks>
     private FunctionSig FunctionSignature()
     {
-        Consume(TokenType.FUNCTION, "se esperaba 'function' en la firma del contrato");
+        Consume(TokenType.FUNCTION, "expected 'function' in the contract signature");
         string returnType = ReturnType();
         Token name = Consume(TokenType.IDENTIFIER,
-            "se esperaba el nombre de la función");
+            "expected the function name");
         var parameters = ParameterList();
-        Consume(TokenType.SEMICOLON, "se esperaba ';' al final de la firma del contrato");
+        Consume(TokenType.SEMICOLON, "expected ';' at the end of the contract signature");
         return new FunctionSig(returnType, name.Lexeme, parameters);
     }
 
@@ -209,20 +209,20 @@ internal sealed class Parser : IParser
     private ModuleDecl ModuleDeclaration()
     {
         Token name = Consume(TokenType.IDENTIFIER,
-                    "se esperaba el nombre del módulo después de 'module'");
+                    "expected the module name after 'module'");
 
         string? contract = null;
         if (Match(TokenType.COLON))
             contract = Consume(TokenType.IDENTIFIER,
-                "se esperaba el nombre del contrato después de ':'").Lexeme;
+                "expected the contract name after ':'").Lexeme;
 
-        Consume(TokenType.LBRACE, "se esperaba '{' después del encabezado del módulo");
+        Consume(TokenType.LBRACE, "expected '{' after the module header");
 
         var functions = new List<FunctionDecl>();
         while (!Check(TokenType.RBRACE) && !IsAtEnd())
             functions.Add(ModuleFunction());
 
-        Consume(TokenType.RBRACE, "se esperaba '}' para cerrar el módulo");
+        Consume(TokenType.RBRACE, "expected '}' to close the module");
         return new ModuleDecl(name.Lexeme, contract, functions);
     }
 
@@ -240,16 +240,16 @@ internal sealed class Parser : IParser
     private FunctionDecl ModuleFunction()
     {
         bool isExternal = Match(TokenType.EXTERNAL);
-        Consume(TokenType.FUNCTION, "se esperaba 'function'");
+        Consume(TokenType.FUNCTION, "expected 'function'");
         string returnType = ReturnType();
         Token name = Consume(TokenType.IDENTIFIER,
-            "se esperaba el nombre de la función");
+            "expected the function name");
         var parameters = ParameterList();
 
         if (isExternal)
         {
             Consume(TokenType.SEMICOLON,
-                "se esperaba ';' después de una función 'external'");
+                "expected ';' after an 'external' function");
             return new FunctionDecl(returnType, name.Lexeme, parameters,
                 new Block(new List<Stmt>()), IsExternal: true);
         }
@@ -278,10 +278,10 @@ internal sealed class Parser : IParser
     /// </remarks>
     private FunctionDecl Function()
     {
-        Consume(TokenType.FUNCTION, "se esperaba 'function'");
+        Consume(TokenType.FUNCTION, "expected 'function'");
         string returnType = ReturnType();
         Token name = Consume(TokenType.IDENTIFIER,
-            "se esperaba el nombre de la función");
+            "expected the function name");
 
         var parameters = ParameterList();
 
@@ -297,7 +297,7 @@ internal sealed class Parser : IParser
     /// </remarks>
     private List<Param> ParameterList()
     {
-        Consume(TokenType.LPAREN, "se esperaba '(' después del nombre de la función");
+        Consume(TokenType.LPAREN, "expected '(' after the function name");
         var parameters = new List<Param>();
         if (!Check(TokenType.RPAREN))
         {
@@ -305,12 +305,12 @@ internal sealed class Parser : IParser
             {
                 string type = TypeName();
                 Token param = Consume(TokenType.IDENTIFIER,
-                    "se esperaba un nombre de parámetro");
+                    "expected a parameter name");
                 parameters.Add(new Param(type, param.Lexeme));
             }
             while (Match(TokenType.COMMA));
         }
-        Consume(TokenType.RPAREN, "se esperaba ')' después de los parámetros");
+        Consume(TokenType.RPAREN, "expected ')' after the parameters");
         return parameters;
     }
 
@@ -345,7 +345,7 @@ internal sealed class Parser : IParser
         if (Match(TokenType.TYPE_ULONG)) return "ulong";
         if (Match(TokenType.TYPE_DOUBLE)) return "double";
         if (Match(TokenType.TYPE_FLOAT)) return "float";
-        throw new System.Exception("se esperaba el tipo de dato");
+        throw new System.Exception("expected a data type");
     }
 
     #endregion
@@ -389,12 +389,12 @@ internal sealed class Parser : IParser
     private Stmt VarDeclaration(string? declareType)
     {
         Token name = Consume(TokenType.IDENTIFIER,
-            "se esperaba el nombre de la variable después de 'let'");
+            "expected the variable name after 'let'");
         Consume(TokenType.EQUAL,
-            "se esperaba '=' después del nombre de la variable");
+            "expected '=' after the variable name");
         Expr initializer = Expression();
         Consume(TokenType.SEMICOLON,
-            "se esperaba ';' al final de la declaración");
+            "expected ';' at the end of the declaration");
         return new VarDecl(declareType, name.Lexeme, initializer);
     }
 
@@ -407,9 +407,9 @@ internal sealed class Parser : IParser
     /// </remarks>
     private Stmt WhenStatement()
     {
-        Consume(TokenType.LPAREN, "se esperaba '(' despues de 'when'");
+        Consume(TokenType.LPAREN, "expected '(' after 'when'");
         Expr condition = Expression();
-        Consume(TokenType.RPAREN, "se esperaba ')' despues de la condicion");
+        Consume(TokenType.RPAREN, "expected ')' after the condition");
         Block thenCodeBlock = Block();
         Stmt? elseCodeBlock = null;
         if (Match(TokenType.ELSE))
@@ -443,12 +443,12 @@ internal sealed class Parser : IParser
             if (Match(TokenType.LBRACKET))
             {
                 Token variable = Consume(TokenType.IDENTIFIER,
-                    "se esperaba el nombre del contador después de '['");
-                Consume(TokenType.COLON, "se esperaba ':' después del contador");
+                    "expected the counter name after '['");
+                Consume(TokenType.COLON, "expected ':' after the counter");
                 Expr from = Expression();
-                Consume(TokenType.RANGE, "se esperaba '...' en el rango");
+                Consume(TokenType.RANGE, "expected '...' in the range");
                 Expr to = Expression();
-                Consume(TokenType.RBRACKET, "se esperaba ']' para cerrar el rango");
+                Consume(TokenType.RBRACKET, "expected ']' to close the range");
                 Block rangeBody = Block();
                 return new RangeLoopStmt(variable.Lexeme, from, to, rangeBody);
             }
@@ -456,9 +456,9 @@ internal sealed class Parser : IParser
             // loop when(cond) { }  -> while pre-test
             if (Match(TokenType.WHEN))
             {
-                Consume(TokenType.LPAREN, "se esperaba '(' después de 'when'");
+                Consume(TokenType.LPAREN, "expected '(' after 'when'");
                 Expr condition = Expression();
-                Consume(TokenType.RPAREN, "se esperaba ')' después de la condición");
+                Consume(TokenType.RPAREN, "expected ')' after the condition");
                 Block whileBody = Block();
                 return new WhileStmt(condition, whileBody);
             }
@@ -482,9 +482,9 @@ internal sealed class Parser : IParser
     private Stmt StopStatement()
     {
         if (loopDepth == 0)
-            throw new System.Exception("Error en tiempo de ejecucion: 'stop' no puede estar fuera de un loop");
+            throw new System.Exception("Syntax error: 'stop' cannot appear outside a loop");
 
-        Consume(TokenType.SEMICOLON, "se esperaba ';' después de 'stop'");
+        Consume(TokenType.SEMICOLON, "expected ';' after 'stop'");
         return new StopStmt();
     }
 
@@ -497,7 +497,7 @@ internal sealed class Parser : IParser
     private Stmt ReturnStatement()
     {
         Expr? value = Check(TokenType.SEMICOLON) ? null : Expression();
-        Consume(TokenType.SEMICOLON, "se esperaba ';' después de 'return'");
+        Consume(TokenType.SEMICOLON, "expected ';' after 'return'");
         return new ReturnStmt(value);
     }
 
@@ -511,7 +511,7 @@ internal sealed class Parser : IParser
     {
         Expr expr = Expression();
         Consume(TokenType.SEMICOLON,
-            "se esperaba ';' al final de la sentencia");
+            "expected ';' at the end of the statement");
         return new ExpressionStmt(expr);
     }
 
@@ -523,7 +523,7 @@ internal sealed class Parser : IParser
     /// </remarks>
     private Block Block()
     {
-        Consume(TokenType.LBRACE, "se esperaba '{' para abrir el bloque");
+        Consume(TokenType.LBRACE, "expected '{' to open the block");
 
         var statements = new List<Stmt>();
         while (!Check(TokenType.RBRACE) && !IsAtEnd())
@@ -531,7 +531,7 @@ internal sealed class Parser : IParser
             statements.Add(Statement());
         }
 
-        Consume(TokenType.RBRACE, "se esperaba '}' para cerrar el bloque");
+        Consume(TokenType.RBRACE, "expected '}' to close the block");
         return new Block(statements);
     }
 
@@ -564,7 +564,7 @@ internal sealed class Parser : IParser
             if (expr is Variable v)
                 return new Assign(v.Name, value);
 
-            throw new System.Exception("Destino de asignación inválido");
+            throw new System.Exception("Invalid assignment target");
         }
 
         return expr;
@@ -719,7 +719,7 @@ internal sealed class Parser : IParser
             if (Match(TokenType.DOT))
             {
                 Token member = Consume(TokenType.IDENTIFIER,
-                    "se esperaba un nombre de miembro después de '.'");
+                    "expected a member name after '.'");
                 expr = new MemberAccess(expr, member.Lexeme);
             }
             else if (Match(TokenType.LPAREN))
@@ -755,7 +755,7 @@ internal sealed class Parser : IParser
             while (Match(TokenType.COMMA));
         }
 
-        Consume(TokenType.RPAREN, "se esperaba ')' después de los argumentos");
+        Consume(TokenType.RPAREN, "expected ')' after the arguments");
         return new Call(callee, arguments);
     }
 
@@ -775,8 +775,8 @@ internal sealed class Parser : IParser
 
         Token token = Peek();
         throw new System.Exception(
-            $"Error de sintaxis: se esperaba una expresión, se encontró " +
-            $"'{token.Lexeme}' ({token.Type}) en la línea {token.Line}, columna {token.Column}");
+            $"Syntax error: expected an expression, found " +
+            $"'{token.Lexeme}' ({token.Type}) at line {token.Line}, column {token.Column}");
     }
 
     #endregion
@@ -844,7 +844,7 @@ internal sealed class Parser : IParser
     private Expr BuildParenToken()
     {
         Expr expr = Expression();
-        Consume(TokenType.RPAREN, "se esperaba ')' para cerrar la expresión");
+        Consume(TokenType.RPAREN, "expected ')' to close the expression");
         return expr;
     }
 
@@ -938,8 +938,8 @@ internal sealed class Parser : IParser
 
         Token token = Peek();
         throw new System.Exception(
-            $"Error de sintaxis: {message}. Se encontró '{token.Lexeme}' " +
-            $"({token.Type}) en la línea {token.Line}, columna {token.Column}");
+            $"Syntax error: {message}. Found '{token.Lexeme}' " +
+            $"({token.Type}) at line {token.Line}, column {token.Column}");
     }
 
     #endregion
