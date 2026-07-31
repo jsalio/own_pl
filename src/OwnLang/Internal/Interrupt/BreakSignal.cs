@@ -1,6 +1,4 @@
-using System;
-
-namespace Own_Lang.Internal.Interupt;
+namespace Own_Lang.Internal.Interrupt;
 
 /// <summary>
 /// Control-flow signal thrown to break out of a loop (the language's <c>stop</c>).

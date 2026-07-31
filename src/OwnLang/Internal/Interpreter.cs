@@ -2,7 +2,7 @@ using System.Globalization;
 using Own_Lang.Internal.AST;
 using Own_Lang.Internal.Contracts;
 using Own_Lang.Internal.Error;
-using Own_Lang.Internal.Interupt;
+using Own_Lang.Internal.Interrupt;
 
 namespace Own_Lang.Internal;
 
@@ -115,7 +115,7 @@ internal sealed class Interpreter : IInterpreter
         {
             if (contracts.ContainsKey(contract.Name))
                 throw new System.Exception(
-                    $"Error en tiempo de ejecución: el contrato '{contract.Name}' ya está definido");
+                    $"Runtime error: contract '{contract.Name}' is already defined");
             contracts[contract.Name] = contract;
         }
 
@@ -123,7 +123,7 @@ internal sealed class Interpreter : IInterpreter
         {
             if (modules.ContainsKey(module.Name))
                 throw new System.Exception(
-                    $"Error en tiempo de ejecución: el módulo '{module.Name}' ya está definido");
+                    $"Runtime error: module '{module.Name}' is already defined");
             modules[module.Name] = module;
         }
 
@@ -142,7 +142,7 @@ internal sealed class Interpreter : IInterpreter
         if (main is null)
         {
             throw new System.Exception(
-                "Error en tiempo de ejecución: no se encontró la función 'Main'");
+                "Runtime error: function 'Main' was not found");
         }
 
         Execute(main.Body);
@@ -233,7 +233,7 @@ internal sealed class Interpreter : IInterpreter
 
             default:
                 throw new System.Exception(
-                    $"Sentencia no soportada: {stmt.GetType().Name}");
+                    $"Unsupported statement: {stmt.GetType().Name}");
         }
     }
 
@@ -289,7 +289,7 @@ internal sealed class Interpreter : IInterpreter
             Logical l => EvaluateLogical(l),
             Unary u => EvaluateUnary(u),
             _ => throw new System.Exception(
-                     $"Expresión no soportada: {expr.GetType().Name}")
+                     $"Unsupported expression: {expr.GetType().Name}")
         };
     }
 
@@ -370,7 +370,7 @@ internal sealed class Interpreter : IInterpreter
             return CallFunction(fn, call.Arguments);
 
         throw new System.Exception(
-            "Llamada no soportada: se esperaba 'Módulo.función(...)' o una función definida");
+            "Unsupported call: expected 'Module.function(...)' or a defined function");
     }
 
     /// <summary>Resolves and invokes a function inside a module.</summary>
@@ -392,14 +392,14 @@ internal sealed class Interpreter : IInterpreter
 
         if (fn is null)
             throw new System.Exception(
-                $"el módulo '{module.Name}' no tiene una función '{name}'");
+                $"module '{module.Name}' has no function '{name}'");
 
         if (!fn.IsExternal)
             return CallFunction(fn, args);
 
         string key = $"{module.Name}.{name}";
         if (!natives.TryGetValue(key, out var native))
-            throw new System.Exception($"no hay implementación nativa para '{key}'");
+            throw new System.Exception($"no native implementation for '{key}'");
 
         if (args.Count != fn.Parameters.Count)
             throw new System.Exception(
@@ -757,7 +757,7 @@ internal sealed class Interpreter : IInterpreter
         uint u => u,
         long l => l,
         ulong ul => ul <= long.MaxValue ? (long)ul : throw new OverflowError("ulong don't ose same space that long"),
-        double or float => throw new OverflowError("no se puede asignar un decimal a un tipo entero"),
+        double or float => throw new OverflowError("cannot assign a decimal to an integer type"),
         _ => throw new MathError($"Invalid number {value}")
     };
 
@@ -774,7 +774,7 @@ internal sealed class Interpreter : IInterpreter
     private static bool IsTruthy(object? value)
     {
         if (value is bool b) return b;
-        throw new System.Exception("La condición de 'when' debe ser booleana");
+        throw new System.Exception("the 'when' condition must be a boolean");
     }
 
     /// <summary>Renders a runtime value as text for output and string concatenation.</summary>
@@ -807,7 +807,7 @@ internal sealed class Interpreter : IInterpreter
         {
             if (!contracts.TryGetValue(module.Contract, out var contract))
                 throw new System.Exception(
-                    $"el módulo '{module.Name}' implementa un contrato desconocido '{module.Contract}'");
+                    $"module '{module.Name}' implements an unknown contract '{module.Contract}'");
 
             foreach (var sig in contract.Members)
             {
@@ -817,7 +817,7 @@ internal sealed class Interpreter : IInterpreter
 
                 if (impl is null)
                     throw new System.Exception(
-                        $"el módulo '{module.Name}' no implementa '{sig.Name}' del contrato '{contract.Name}'");
+                        $"module '{module.Name}' does not implement '{sig.Name}' from contract '{contract.Name}'");
 
                 bool sameShape = impl.ReturnType == sig.ReturnType
                     && impl.Parameters.Count == sig.Parameters.Count;
@@ -827,14 +827,14 @@ internal sealed class Interpreter : IInterpreter
 
                 if (!sameShape)
                     throw new System.Exception(
-                        $"la firma de '{sig.Name}' en '{module.Name}' no coincide con el contrato '{contract.Name}'");
+                        $"the signature of '{sig.Name}' in '{module.Name}' does not match contract '{contract.Name}'");
             }
         }
 
         foreach (var f in module.Functions)
             if (f.IsExternal && !natives.ContainsKey($"{module.Name}.{f.Name}"))
                 throw new System.Exception(
-                    $"la función external '{module.Name}.{f.Name}' no tiene implementación nativa registrada");
+                    $"external function '{module.Name}.{f.Name}' has no registered native implementation");
     }
 
     #endregion

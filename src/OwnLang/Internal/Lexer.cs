@@ -140,7 +140,7 @@ internal sealed class Lexer : ILexer
                     if (!Match('.'))
                     {
                         throw new System.Exception(
-                            $"Se esperaba '...' en la línea {line}, columna {column}");
+                            $"Expected '...' at line {line}, column {column}");
                     }
                     AddToken(TokenType.RANGE);
                 }
@@ -176,13 +176,13 @@ internal sealed class Lexer : ILexer
 
             case '&':
                 if (!Match('&'))
-                    throw new System.Exception("se esperaba '&&' en la línea " + line + ", columna " + column);
+                    throw new System.Exception("expected '&&' at line " + line + ", column " + column);
                 AddToken(TokenType.AND);
                 break;
 
             case '|':
                 if (!Match('|'))
-                    throw new Exception("se esperaba '||' en la línea " + line + ", columna " + column);
+                    throw new Exception("expected '||' at line " + line + ", column " + column);
                 AddToken(TokenType.OR);
                 break;
 
@@ -198,7 +198,7 @@ internal sealed class Lexer : ILexer
                 else
                 {
                     throw new System.Exception(
-                        $"Carácter inesperado '{c}' en la línea {line}, columna {column}");
+                        $"Unexpected character '{c}' at line {line}, column {column}");
                 }
                 break;
         }
@@ -266,7 +266,7 @@ internal sealed class Lexer : ILexer
         if (IsAtEnd())
         {
             throw new System.Exception(
-                $"String sin cerrar en la línea {line}, columna {column}");
+                $"Unterminated string at line {line}, column {column}");
         }
 
         Advance(); // consume the closing quote "
