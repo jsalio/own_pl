@@ -94,4 +94,48 @@ public class ReplTests
 
         Assert.That(output, Does.Contain("7"));
     }
+
+    [Test]
+    public void DefinesAFunctionAndCallsItOnALaterLine()
+    {
+        var (output, error) = Feed(
+            "function int sq(int n) { return n * n; }\nsq(5);\nexit\n");
+
+        Assert.That(output, Does.Contain("25"));
+        Assert.That(error, Is.Empty);
+    }
+
+    [Test]
+    public void RedefiningAFunctionReplacesIt()
+    {
+        var (output, _) = Feed(
+            "function int f(int n) { return n * n; }\nf(3);\n" +   // 9
+            "function int f(int n) { return n + n; }\nf(3);\n" +   // 6
+            "exit\n");
+
+        Assert.That(output, Does.Contain("9"));
+        Assert.That(output, Does.Contain("6"));
+    }
+
+    [Test]
+    public void DefiningAFunctionEchoesNothing()
+    {
+        var (output, error) = Feed(
+            "function int id(int n) { return n; }\nexit\n");
+
+        // The definition itself prints nothing (no echoed value); it is registered.
+        Assert.That(output, Does.Not.Contain("id"));
+        Assert.That(error, Is.Empty);
+    }
+
+    [Test]
+    public void AFunctionCanCallAnotherDefinedFunction()
+    {
+        var (output, _) = Feed(
+            "function int dbl(int n) { return n + n; }\n" +
+            "function int quad(int n) { return dbl(dbl(n)); }\n" +
+            "quad(5);\nexit\n");
+
+        Assert.That(output, Does.Contain("20"));
+    }
 }

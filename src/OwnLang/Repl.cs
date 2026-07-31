@@ -53,7 +53,7 @@ internal static class Repl
             try
             {
                 var tokens = new Lexer(line).Tokenize();
-                Stmt statement = new Parser(tokens).ParseStatement();
+                Stmt statement = new Parser(tokens).ParseReplLine();
                 string? result = interpreter.RunReplLine(statement);
                 if (result is not null) output.WriteLine(result);
             }

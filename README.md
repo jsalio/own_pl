@@ -55,10 +55,12 @@ dumps the parsed top-level declarations before running. This lives in
 `src/OwnLang/Runner.cs`.
 
 **With no argument**, it starts an interactive **REPL** (`src/OwnLang/Repl.cs`):
-type one statement per line and see the result. Bindings persist across lines,
-so `let x = 5;` then `x + 1;` prints `6`; an expression statement echoes its
-value; a parse/runtime error is reported without ending the session; `exit` or
-`quit` (or Ctrl+D) leaves it. On a real terminal it supports **line editing and
+type one declaration or statement per line and see the result. Bindings persist
+across lines, so `let x = 5;` then `x + 1;` prints `6`; you can also **define a
+function** and call it later (`function int sq(int n) { return n * n; }` then
+`sq(5);` prints `25`), and redefining a name replaces it. An expression statement
+echoes its value; a parse/runtime error is reported without ending the session;
+`exit` or `quit` (or Ctrl+D) leaves it. On a real terminal it supports **line editing and
 history**: ←/→ and Home/End move within the line, Backspace/Delete edit it, and
 ↑/↓ recall previous commands. The editing state (a line buffer with a cursor,
 plus a command history) lives in `LineEditor`; `ConsoleLineReader` drives it key

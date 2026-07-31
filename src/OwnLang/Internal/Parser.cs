@@ -95,25 +95,28 @@ internal sealed class Parser : IParser
     }
 
     /// <summary>
-    /// Parses a single statement (one REPL line) and asserts the input ends there.
+    /// Parses a single REPL line (a declaration or a statement) and asserts the
+    /// input ends there.
     /// </summary>
     /// <remarks>
     /// The REPL feeds one line at a time, so unlike <see cref="Parse"/> (which expects
     /// a whole <c>def ...</c> compilation unit) this reuses the ordinary
-    /// <see cref="Statement"/> rule and then requires end-of-input, rejecting trailing
-    /// tokens.
+    /// <see cref="Declaration"/> rule — which accepts a <c>function</c> declaration as
+    /// well as any statement — and then requires end-of-input, rejecting trailing
+    /// tokens. Letting a line be a <c>function</c> is what allows defining functions
+    /// interactively.
     /// </remarks>
-    public Stmt ParseStatement()
+    public Stmt ParseReplLine()
     {
-        Stmt stmt = Statement();
+        Stmt line = Declaration();
         if (!IsAtEnd())
         {
             Token token = Peek();
             throw new System.Exception(
-                $"Syntax error: expected the end of the statement, found " +
+                $"Syntax error: expected the end of the line, found " +
                 $"'{token.Lexeme}' ({token.Type}) at line {token.Line}, column {token.Column}");
         }
-        return stmt;
+        return line;
     }
 
     /// <inheritdoc/>

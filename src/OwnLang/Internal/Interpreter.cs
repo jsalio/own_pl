@@ -68,17 +68,25 @@ internal sealed class Interpreter : IInterpreter
     }
 
     /// <summary>
-    /// Runs one REPL statement against the current (persistent) environment and
+    /// Runs one REPL line against the current (persistent) environment and
     /// returns its printable value, or null when there is nothing to print.
     /// </summary>
     /// <remarks>
     /// Reuses the same interpreter instance across lines, so a <c>let</c> binds into
-    /// the long-lived global scope and stays visible on later lines. An expression
-    /// statement returns its evaluated value (so the REPL can echo it); every other
-    /// statement runs for its effect and returns null.
+    /// the long-lived global scope and a <c>function</c> declaration into the
+    /// long-lived function table, both staying visible on later lines. A
+    /// <see cref="FunctionDecl"/> is registered (not executed) — redefining a name
+    /// simply replaces it; an expression statement returns its evaluated value (so
+    /// the REPL can echo it); every other statement runs for its effect and returns null.
     /// </remarks>
     public string? RunReplLine(Stmt statement)
     {
+        if (statement is FunctionDecl function)
+        {
+            functions[function.Name] = function;
+            return null;
+        }
+
         if (statement is ExpressionStmt expr)
         {
             object? value = Evaluate(expr.Expression);
