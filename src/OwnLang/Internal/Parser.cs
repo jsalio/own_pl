@@ -94,6 +94,28 @@ internal sealed class Parser : IParser
         primaryStartTokens = primaryBuilders.Keys.ToArray();
     }
 
+    /// <summary>
+    /// Parses a single statement (one REPL line) and asserts the input ends there.
+    /// </summary>
+    /// <remarks>
+    /// The REPL feeds one line at a time, so unlike <see cref="Parse"/> (which expects
+    /// a whole <c>def ...</c> compilation unit) this reuses the ordinary
+    /// <see cref="Statement"/> rule and then requires end-of-input, rejecting trailing
+    /// tokens.
+    /// </remarks>
+    public Stmt ParseStatement()
+    {
+        Stmt stmt = Statement();
+        if (!IsAtEnd())
+        {
+            Token token = Peek();
+            throw new System.Exception(
+                $"Syntax error: expected the end of the statement, found " +
+                $"'{token.Lexeme}' ({token.Type}) at line {token.Line}, column {token.Column}");
+        }
+        return stmt;
+    }
+
     /// <inheritdoc/>
     /// <remarks>
     /// The entry point and the AST root builder. It loops over the top-level <c>def</c> blocks,
