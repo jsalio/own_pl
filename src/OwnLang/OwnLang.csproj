@@ -11,5 +11,8 @@
   <ItemGroup>
     <InternalsVisibleTo Include="OwnLang.Tests" />
   </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="prelude.own" />
+  </ItemGroup>
 
 </Project>

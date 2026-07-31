@@ -566,8 +566,8 @@ public class InterpreterTests
     public void ModuleFunctionWithLanguageBodyIsCallable()
     {
         Assert.That(
-            Run(@"def module Math { function int twice(int n) { return n + n; } }
-                  def program { function empty Main() { Term.out(Math.twice(21)); } }"),
+            Run(@"def module Calc { function int twice(int n) { return n + n; } }
+                  def program { function empty Main() { Term.out(Calc.twice(21)); } }"),
             Is.EqualTo("42"));
     }
 
@@ -623,6 +623,40 @@ public class InterpreterTests
     {
         Assert.That(
             () => Run(@"def module Term { function empty out(string m) { } }
+                        def program { function empty Main() { } }"),
+            Throws.Exception);
+    }
+
+    #endregion
+
+    #region Prelude (standard library loaded from prelude.own)
+
+    [Test]
+    public void PreludeMathAbsIsAvailableToPrograms()
+    {
+        // Math lives in the prelude (written in Own_Lang), not in the user program.
+        Assert.That(RunMain(@"Term.out(Math.Abs(0 - 5));"), Is.EqualTo("5"));
+    }
+
+    [Test]
+    public void PreludeMathAbsLeavesPositivesUnchanged()
+    {
+        Assert.That(RunMain(@"Term.out(Math.Abs(7));"), Is.EqualTo("7"));
+    }
+
+    [Test]
+    public void PreludeMathMaxAndMinWork()
+    {
+        Assert.That(RunMain(@"Term.out(Math.Max(3, 7));"), Is.EqualTo("7"));
+        Assert.That(RunMain(@"Term.out(Math.Min(3, 7));"), Is.EqualTo("3"));
+    }
+
+    [Test]
+    public void RedefiningAPreludeModuleThrows()
+    {
+        // 'Math' comes from the prelude, so a program cannot redeclare it.
+        Assert.That(
+            () => Run(@"def module Math { function int Abs(int n) { return n; } }
                         def program { function empty Main() { } }"),
             Throws.Exception);
     }
